@@ -16,8 +16,8 @@ workers  : 4
 # modeling
 stype     : cube
 radius    : 1
-n_samples : 64
-n_imps    : 64
+n_samples : 64 #64
+n_imps    : 64 #64
 mtype     : NeRFMLP
 
 # test

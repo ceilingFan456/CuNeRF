@@ -12,7 +12,7 @@ pip install gpustat\
             numpy\
             tqdm\
             pyyaml\
-            lpips -i https://pypi.douban.com/simple
+            lpips 
 
 # install ffmpeg [optional]
 # apt install ffmpeg

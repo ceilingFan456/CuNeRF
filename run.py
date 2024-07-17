@@ -8,6 +8,12 @@ import argparse
 from tqdm import tqdm
 from functools import reduce
 
+## solved the error 
+## RuntimeError: CUDA error: CUBLAS_STATUS_NOT_INITIALIZED when calling `cublasCreate(handle)`
+## TODO find the actual cause related to labels
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
+
 import math
 import random
 import numpy as np
