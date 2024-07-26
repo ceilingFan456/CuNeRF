@@ -51,7 +51,10 @@ class Cfg:
             self.model_ft = getattr(models, cfg.pop('name'))(**cfg).cuda()
 
         def load_optim(self, cfg):
-            params = list(self.model.parameters()) + list(self.model_ft.parameters())
+            if self.model_ft is None:
+                params = self.model.parameters()
+            else:
+                params = list(self.model.parameters()) + list(self.model_ft.parameters())
             self.optim = getattr(torch.optim, cfg.pop('name'))(params, **cfg)
 
         def load_dataset(self, cfg):
@@ -255,9 +258,12 @@ class Cfg:
         ans0 = self.sample_fn(coord_batch, depths, is_train=is_train, R=R)
         raw0 = self.model(ans0['pts'])
         out0 = self.render_fn(raw0, **ans0)
-        ans = self.imp_fn(**ans0, **out0, is_train=is_train)
-        raw = self.model_ft(ans['pts'])
-        out = self.render_fn(raw, **ans)
+        if self.hierachical:
+            ans = self.imp_fn(**ans0, **out0, is_train=is_train)
+            raw = self.model_ft(ans['pts'])
+            out = self.render_fn(raw, **ans)
+        else:
+            out = out0
         return out['rgb'], out0['rgb']
     
     def evaluation(self, pds):
