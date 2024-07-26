@@ -18,8 +18,8 @@ stype     : cube
 radius    : 1
 n_samples : 64 #64
 n_imps    : 64 #64
-mtype     : NeRFMLP
-hierachical: True
+mtype     : NGPMLP
+hierachical: False
 
 # test
 zpos      : [0]
@@ -35,7 +35,7 @@ save_path   : save
 log_path    : save
 
 loss : 
-  name : Adaptive_MSE_LOSS
+  name : MSE_LOSS
 
 sampling : 
   stype     : $stype
@@ -55,10 +55,15 @@ model :
   in_ch   : 3
   out_ch  : 2
   skips   : [4]
-  max_freq: 10
-  p_fns   : ['sin', 'cos']
+  hash_encoding_parameters:
+    otype: HashGrid
+    n_levels: 16
+    n_features_per_level: 2
+    log2_hashmap_size: 19
+    base_resolution: 16
+    per_level_scale: 2.0
 
-model_ft : $model
+model_ft : 
 
 dataset : 
   mode : $mode
