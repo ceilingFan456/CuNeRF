@@ -8,7 +8,7 @@ log_iter : 100
 bs_train : 1024 # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
-N_eval   : 50
+N_eval   : 
 lr       : 0.002
 lr_final : 0.00002
 workers  : 4

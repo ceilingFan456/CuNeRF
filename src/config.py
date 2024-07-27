@@ -51,10 +51,10 @@ class Cfg:
             self.model_ft = getattr(models, cfg.pop('name'))(**cfg).cuda()
 
         def load_optim(self, cfg):
-            if self.model_ft is None:
-                params = self.model.parameters()
-            else:
+            if self.hierachical:
                 params = list(self.model.parameters()) + list(self.model_ft.parameters())
+            else:
+                params = list(self.model.parameters())
             self.optim = getattr(torch.optim, cfg.pop('name'))(params, **cfg)
 
         def load_dataset(self, cfg):

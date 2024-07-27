@@ -73,7 +73,7 @@ def train(cfg):
                 if cfg.i_step % cfg.log_iter == 0: cfg.Log()
                 if cfg.i_step % cfg.save_iter == 0: cfg.Save()
                 if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
-                if cfg.i_step % cfg.save_images_iter == 0: cfg.Save_images(rgb, gts)
+                # if cfg.i_step % cfg.save_images_iter == 0: cfg.Save_images(rgb, gts)
 
             # update step and pbar
             if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): return
