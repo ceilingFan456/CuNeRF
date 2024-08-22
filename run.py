@@ -11,11 +11,14 @@ from functools import reduce
 import math
 import random
 import numpy as np
+import os 
+os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
 
 import torch
 import torch.nn.functional as F
 
 from src import Cfg, utils
+
 
 def argParse():
     parser = argparse.ArgumentParser(description='MISR3D')
@@ -53,13 +56,22 @@ def argParse():
 
 def train(cfg):
     while cfg.i_step <= cfg.max_iter:
+        print(f"Step {cfg.i_step} / {cfg.max_iter}")
         for batch in cfg.trainloader:
             cfg.optim.zero_grad()
             gts, coords, depths = batch
-            gts, coords = gts.squeeze(0), coords.squeeze(0)
-            rgb, rgb0 = cfg.Render(coords, depths, is_train=True)
+            # gts, coords = gts.squeeze(0), coords.squeeze(0)
+            gts = gts.squeeze(0)
+            # rgb, rgb0 = cfg.Render(coords, depths, is_train=True)
+            rgb, rgb0 = cfg.fullmodel((coords, depths))
             loss = cfg.loss_fn(rgb, rgb0, gts)
             loss.backward()
+            # for name, param in cfg.model.named_parameters():
+            #     if param.requires_grad and param.grad is None:
+            #         print(f"Parameter {name} is not used in the forward pass.")
+            # for name, param in cfg.model_ft.named_parameters():
+            #     if param.requires_grad and  param.grad is None:
+            #         print(f"Parameter {name} is not used in the forward pass.")
             # cfg.Update_grad()
             cfg.optim.step()
             with torch.no_grad():
@@ -121,6 +133,11 @@ def test(cfg):
 
     if cfg.save_map: 
         cfg.Save_test_map(pds, zs, angles, scales)
+
+        
+def main(args):
+    cfg = Cfg(args)
+    
     
 if __name__ == '__main__':
 
