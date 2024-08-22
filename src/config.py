@@ -20,6 +20,7 @@ import torch
 from torch.utils.data import DataLoader
 from . import dataset, loss, metrics, rendering, sampling, models, importance
 from .utils import dfs_update_configs, clip_grad, lr_decay, merge_configs, mlt_process
+from .models import FullModel
 
 
 class Cfg:
@@ -45,10 +46,16 @@ class Cfg:
 
         # loading config setup
         def load_model(self, cfg):
-            self.model = getattr(models, cfg.pop('name'))(**cfg).cuda()
+            # self.model = getattr(models, cfg.pop('name'))(**cfg).cuda()
+            self.model = getattr(models, cfg.pop('name'))(**cfg)
+            # self.model = torch.nn.DataParallel(self.model).cuda()
+            self.model = (self.model).cuda()
 
         def load_model_ft(self, cfg):
-            self.model_ft = getattr(models, cfg.pop('name'))(**cfg).cuda()
+            # self.model_ft = getattr(models, cfg.pop('name'))(**cfg).cuda()
+            self.model_ft = getattr(models, cfg.pop('name'))(**cfg)
+            # self.model = torch.nn.DataParallel(self.model).cuda()
+            self.model = (self.model).cuda()
 
         def load_optim(self, cfg):
             params = list(self.model.parameters()) + list(self.model_ft.parameters())
@@ -86,6 +93,9 @@ class Cfg:
 
         def load_loss(self, cfg):
             self.loss_fn = partial(getattr(loss, cfg.pop('name')), **cfg)
+
+        def load_fullmodel(self, cfg):
+            self.fullmodel = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
 
         text_cfgs = ''
         # fname = reduce(lambda x1, x2 : f'{x1}.{x2}', os.path.basename(cfg['file']).split('.')[:-1])
@@ -252,8 +262,19 @@ class Cfg:
         self.Update_lr()
         
     def Render(self, coord_batch, depths, is_train=False, R=None):
+        print(f"coord_batch: {coord_batch.shape}")
+        print(f"depths: {depths[0].shape}")
+        
         ans0 = self.sample_fn(coord_batch, depths, is_train=is_train, R=R)
+        
+        a = ans0['pts']
+        b = ans0['cnts']
+        print(f"pts: {a.shape}")
+        print(f"cnts: {b.shape}")
+
         raw0 = self.model(ans0['pts'])
+        print(f"raw0: {raw0.shape}")
+        
         out0 = self.render_fn(raw0, **ans0)
         ans = self.imp_fn(**ans0, **out0, is_train=is_train)
         raw = self.model_ft(ans['pts'])
