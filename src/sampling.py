@@ -22,6 +22,7 @@ def cube_sampling(batch, depths, n_samples, is_train, R):
         z_vals = z_l + t_vals[:, 2] * (z_r - z_l) * torch.rand(n_cnts, n_samples)
             
     else:
+        # print("Using is_train=False")
         x_vals = x_l + t_vals[:, 0] * (x_r - x_l)
         y_vals = y_l + t_vals[:, 1] * (y_r - y_l)
         z_vals = z_l + t_vals[:, 2] * (z_r - z_l)

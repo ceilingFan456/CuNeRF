@@ -37,6 +37,12 @@ class FullModel(torch.nn.Module):
         coords = coords.squeeze(0)
         
         return self.Render(coords, depths, is_train=True)
+
+    def eval_forward(self, x):
+        coords, depths = x
+        coords = coords.squeeze(0)
+        
+        return self.Render(coords, depths, is_train=False)
     
     def Render(self, coord_batch, depths, is_train=False, R=None):
         ans0 = self.sample_fn(coord_batch, depths, is_train=is_train, R=R)
@@ -46,7 +52,7 @@ class FullModel(torch.nn.Module):
         ans = self.imp_fn(**ans0, **out0, is_train=is_train)
         raw = self.fine(ans['pts'])
         out = self.render_fn(raw, **ans)
-        return out0['rgb'], out0['rgb']
+        return out['rgb'], out0['rgb']
 
     # def sample_fn(self, batch, depths, is_train, R):
     #     n_samples = 64

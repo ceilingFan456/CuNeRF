@@ -22,14 +22,20 @@ from . import dataset, loss, metrics, rendering, sampling, models, importance
 from .utils import dfs_update_configs, clip_grad, lr_decay, merge_configs, mlt_process
 from .models import FullModel
 
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import destroy_process_group
+from torch.utils.data.distributed import DistributedSampler
+
 
 class Cfg:
 
-    def __init__(self, args):
+    def __init__(self, args, rank=0):
         with open(args.cfg, 'r') as bf:
             bcfg = yaml.safe_load(bf)
         
         cfg = merge_configs(args, bcfg)
+        self.cfg = cfg
+        self.rank = rank
         dfs_update_configs(cfg)
         self.load_cfg(cfg)
 
@@ -69,7 +75,13 @@ class Cfg:
 
         def load_dataloader(self, cfg):
             mode = cfg.pop('mode')
-            setattr(self, f'{mode}loader', DataLoader(getattr(self, f'{mode}set'), **cfg[mode]))
+            if not self.cfg["multi_gpu"]:
+                setattr(self, f'{mode}loader', DataLoader(getattr(self, f'{mode}set'), **cfg[mode]))
+            else:
+                cfg["shuffle"] = False
+                cfg["sampler"] = DistributedSampler(self.trainset)
+                setattr(self, f'{mode}loader', DataLoader(getattr(self, f'{mode}set'), **cfg[mode]))
+
             if mode == 'train':
                 self.evalloader = DataLoader(self.evalset, **cfg['eval'])
 
@@ -95,7 +107,14 @@ class Cfg:
             self.loss_fn = partial(getattr(loss, cfg.pop('name')), **cfg)
 
         def load_fullmodel(self, cfg):
-            self.fullmodel = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+            if not self.cfg["multi_gpu"]:
+                self.fullmodel = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+            else:
+                model = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+                self.fullmodel = DDP(model, device_ids=[self.rank])
+            
+            
+
 
         text_cfgs = ''
         # fname = reduce(lambda x1, x2 : f'{x1}.{x2}', os.path.basename(cfg['file']).split('.')[:-1])
@@ -217,12 +236,6 @@ class Cfg:
             os.system(f'ffmpeg -i {result_dir}/%0{d}d.png -pix_fmt yuv422p -vcodec libx264 -vsync 0 {video_path} -y')
 
     def Save_map(self, pds, gts=None):
-        
-        def save_map_unit(rets, tid, sufix, N, mp):
-            savepath = os.path.join(result_path, f'{str(tid).zfill(len(str(N)))}_{sufix}.png')
-            
-            if not os.path.exists(savepath) or sufix != 'gt':
-                Image.fromarray(mp).save(savepath)
 
         # names = self.evalset.get_names()
         result_path = os.path.join(self.result_path, 'eval')
@@ -232,7 +245,7 @@ class Cfg:
             if maps is not None:
                 maps = np.uint8(maps * 255.)
                 maps = [maps] if len(maps) == 1 else [[m] for m in maps]
-                mlt_process(None, [sufix, len(maps)], maps, save_map_unit, self.workers)
+                mlt_process(None, [sufix, len(maps), result_path], maps, save_map_unit, self.workers)
 
     def Update_lr(self):
         self.i_lr = self.lr_decay(self.i_step)
@@ -262,18 +275,18 @@ class Cfg:
         self.Update_lr()
         
     def Render(self, coord_batch, depths, is_train=False, R=None):
-        print(f"coord_batch: {coord_batch.shape}")
-        print(f"depths: {depths[0].shape}")
+        # print(f"coord_batch: {coord_batch.shape}")
+        # print(f"depths: {depths[0].shape}")
         
         ans0 = self.sample_fn(coord_batch, depths, is_train=is_train, R=R)
         
         a = ans0['pts']
         b = ans0['cnts']
-        print(f"pts: {a.shape}")
-        print(f"cnts: {b.shape}")
+        # print(f"pts: {a.shape}")
+        # print(f"cnts: {b.shape}")
 
         raw0 = self.model(ans0['pts'])
-        print(f"raw0: {raw0.shape}")
+        # print(f"raw0: {raw0.shape}")
         
         out0 = self.render_fn(raw0, **ans0)
         ans = self.imp_fn(**ans0, **out0, is_train=is_train)
@@ -298,3 +311,10 @@ class Cfg:
                     self.Save_map(pds, gts)
 
         print(logs)
+
+
+def save_map_unit(rets, tid, sufix, N, result_path, mp):
+    savepath = os.path.join(result_path, f'{str(tid).zfill(len(str(N)))}_{sufix}.png')
+    
+    if not os.path.exists(savepath) or sufix != 'gt':
+        Image.fromarray(mp).save(savepath)

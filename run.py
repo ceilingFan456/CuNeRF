@@ -12,7 +12,11 @@ import math
 import random
 import numpy as np
 import os 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
+import torch.multiprocessing as mp
+from torch.distributed import init_process_group
+
 
 import torch
 import torch.nn.functional as F
@@ -49,6 +53,7 @@ def argParse():
     # other options
     parser.add_argument('--modality', choices=['FLAIR', 'T1w', 't1gd', 'T2w']) # modality for mris
     parser.add_argument('--workers', type=int) # workers for saving imgs
+    parser.add_argument('--multi_gpu', action='store_true') # multi-gpu
     args = parser.parse_args()
 
     return args
@@ -56,7 +61,6 @@ def argParse():
 
 def train(cfg):
     while cfg.i_step <= cfg.max_iter:
-        print(f"Step {cfg.i_step} / {cfg.max_iter}")
         for batch in cfg.trainloader:
             cfg.optim.zero_grad()
             gts, coords, depths = batch
@@ -74,16 +78,27 @@ def train(cfg):
             #         print(f"Parameter {name} is not used in the forward pass.")
             # cfg.Update_grad()
             cfg.optim.step()
-            with torch.no_grad():
-                cfg.Update(loss, rgb.cpu().numpy(), gts.cpu().numpy())
-                if cfg.i_step % cfg.log_iter == 0: cfg.Log()
-                if cfg.i_step % cfg.save_iter == 0: cfg.Save()
-                if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
 
-            # update step and pbar
-            if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): return
+            if cfg.i_step % 5000 == 0:
+                for param_group in cfg.optim.param_groups:
+                    print(f"[GPU {cfg.rank}] Learning rate: {param_group['lr']}")
+
+            if not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0):
+                with torch.no_grad():
+                    cfg.Update(loss, rgb.cpu().numpy(), gts.cpu().numpy())
+                    if cfg.i_step % cfg.log_iter == 0: cfg.Log()
+                    if cfg.i_step % cfg.save_iter == 0: cfg.Save()
+                    if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
+                
+                cfg.pbar.update(1)
+
+                # update step and pbar
+            if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): 
+                print(f"[GPU{cfg.rank}]Exiting...")
+                return
             cfg.i_step += 1
-            cfg.pbar.update(1)
+                
+                
 
 def eval(cfg):
     N, W, H, S = cfg.evalset.__len__(), cfg.evalset.W, cfg.evalset.H, cfg.bs_eval
@@ -134,20 +149,38 @@ def test(cfg):
     if cfg.save_map: 
         cfg.Save_test_map(pds, zs, angles, scales)
 
-        
-def main(args):
-    cfg = Cfg(args)
+def ddp_setup(rank, world_size):
+    """
+    Args:
+        rank: Unique identifier of each process
+        world_size: Total number of processes
+    """
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+    
+def main(rank, worldsize, args):
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    ddp_setup(rank, worldsize)
+    globals()[args.mode](Cfg(args, rank))
     
     
 if __name__ == '__main__':
-
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    seed = 0
-
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-
+    
     args = argParse()
-    globals()[args.mode](Cfg(args))
+    
+    if not args.multi_gpu: 
+
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        seed = 0
+
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        
+        globals()[args.mode](Cfg(args))
+    else:
+        world_size = torch.cuda.device_count()
+        mp.spawn(main, args=(world_size, args), nprocs=world_size)
