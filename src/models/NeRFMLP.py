@@ -34,13 +34,13 @@ class FullModel(torch.nn.Module):
 
     def forward(self, x):
         coords, depths = x
-        coords = coords.squeeze(0)
+        # coords = coords.squeeze(0)
         
         return self.Render(coords, depths, is_train=True)
 
     def eval_forward(self, x):
         coords, depths = x
-        coords = coords.squeeze(0)
+        # coords = coords.squeeze(0)
         
         return self.Render(coords, depths, is_train=False)
     

@@ -2,13 +2,13 @@
 
 # training
 max_iter : 200000
-eval_iter: 10000
+eval_iter: 1000000
 save_iter: $eval_iter
 log_iter : 100
 bs_train : 1024 # batch size 
-bs_eval  : 32768
+bs_eval  : 16384 # 32768
 bs_test  : $bs_eval
-N_eval   : 50
+N_eval   : 5
 lr       : 0.002
 lr_final : 0.00002
 workers  : 4
@@ -90,15 +90,15 @@ dataset :
 dataloader :
   mode : $mode
   train :
-    batch_size : 1
+    batch_size : 8
     shuffle : True
   
   eval:
-    batch_size : 1
+    batch_size : 8
     shuffle : False
 
   test:
-    batch_size : 1
+    batch_size : 8
     shuffle : False
 
 optim :

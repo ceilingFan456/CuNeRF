@@ -65,7 +65,7 @@ def train(cfg):
             cfg.optim.zero_grad()
             gts, coords, depths = batch
             # gts, coords = gts.squeeze(0), coords.squeeze(0)
-            gts = gts.squeeze(0)
+            # gts = gts.squeeze(0)
             # rgb, rgb0 = cfg.Render(coords, depths, is_train=True)
             rgb, rgb0 = cfg.fullmodel((coords, depths))
             loss = cfg.loss_fn(rgb, rgb0, gts)
@@ -90,7 +90,7 @@ def train(cfg):
                     if cfg.i_step % cfg.save_iter == 0: cfg.Save()
                     if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
                 
-                cfg.pbar.update(1)
+                cfg.pbar.update(gts.shape[0])
 
                 # update step and pbar
             if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): 
@@ -108,7 +108,7 @@ def eval(cfg):
         for idx, batch in enumerate(dataloader):
             dataloader.set_description(f'[EVAL] : {idx}')
             coords, depths = batch
-            coords = coords.squeeze(0)
+            # coords = coords.squeeze(0)
             for cidx in range(math.ceil(W * H / S)):
                 select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
                 rgb, _ = cfg.Render(select_coords, depths, is_train=False)
