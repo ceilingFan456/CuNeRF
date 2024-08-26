@@ -11,11 +11,11 @@ def cube_rendering(raw, pts, cnts, dx, dy, dz):
     sorted_rs, indices_rs = torch.sort(rs)
     dists = sorted_rs[...,1:] - sorted_rs[...,:-1]
     dists = torch.cat([dists, dists[...,-1:]], -1)  # [N_rays, N_samples]
-    print(f"raw.shape={raw.shape}, indices_rs.shape={indices_rs.shape}")
+    # print(f"raw.shape={raw.shape}, indices_rs.shape={indices_rs.shape}")
     rgb = torch.gather(torch.sigmoid(raw[...,0]), -1, indices_rs) ## TODO why is this wrong? originally wrongly put raw[...,-1]. note raw[...,:-1] takes 0 instead of -1.
     # rgb = torch.gather(torch.sigmoid(raw[...,:-1]), -2, indices_rs[..., None].expand(raw[...,:-1].shape)) 
 
-    print(f"rgb.shape={rgb.shape}")
+    # print(f"rgb.shape={rgb.shape}")
     sorted_raw = torch.gather(raw[...,-1], -1, indices_rs)
     # print(f"sorted_raw.shape={sorted_raw.shape}, dists.shape={dists.shape}, sorted_rs.shape={sorted_rs.shape}, norm.shape={norm.shape}")
     beta = raw2beta(sorted_raw, dists, sorted_rs / norm)
