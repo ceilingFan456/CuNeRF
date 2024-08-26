@@ -12,8 +12,8 @@ import math
 import random
 import numpy as np
 import os 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
@@ -96,7 +96,7 @@ def train(cfg):
             if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): 
                 print(f"[GPU{cfg.rank}]Exiting...")
                 return
-            cfg.i_step += 1
+            cfg.i_step += gts.shape[0]
                 
                 
 
