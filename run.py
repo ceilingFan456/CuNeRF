@@ -12,8 +12,8 @@ import math
 import random
 import numpy as np
 import os 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
@@ -90,27 +90,35 @@ def train(cfg):
                     if cfg.i_step % cfg.save_iter == 0: cfg.Save()
                     if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
                 
-                cfg.pbar.update(gts.shape[0])
+                cfg.pbar.update(gts.shape[0]*(cfg.bs_train//1024)*(os.environ["CUDA_VISIBLE_DEVICES"].split(',').__len__()))
+                # cfg.pbar.update(1)
 
                 # update step and pbar
             if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): 
                 print(f"[GPU{cfg.rank}]Exiting...")
                 return
-            cfg.i_step += gts.shape[0]
+            # cfg.i_step += gts.shape[0]*(cfg.bs_train//1024)*(os.environ["CUDA_VISIBLE_DEVICES"].split(',').__len__())
+            cfg.i_step += 1
                 
                 
 
 def eval(cfg):
     N, W, H, S = cfg.evalset.__len__(), cfg.evalset.W, cfg.evalset.H, cfg.bs_eval
+    print(f"N={N}, W={W}, H={H}, S={S}")
     pds = np.zeros((N, W * H))
     dataloader = tqdm(cfg.evalloader)
     with torch.no_grad():
         for idx, batch in enumerate(dataloader):
             dataloader.set_description(f'[EVAL] : {idx}')
             coords, depths = batch
-            # coords = coords.squeeze(0)
+            coords0 = coords.squeeze(0)
             for cidx in range(math.ceil(W * H / S)):
-                select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
+                chunk = list(range(S * cidx, min(S * (cidx + 1), len(coords))))
+                # select_coords = coords[]
+                print(f"select_coords.shape={select_coords.shape}")
+                select_coords0 = coords0[list(range(S * cidx, min(S * (cidx + 1), len(coords0))))]
+                print(f"select_coords0.shape={select_coords0.shape}")
+                
                 rgb, _ = cfg.Render(select_coords, depths, is_train=False)
                 pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
             assert S * (cidx + 1) >= H * W
