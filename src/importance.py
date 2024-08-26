@@ -8,7 +8,7 @@ def cube_imp(weights, indices_rs, pts, cnts, is_train, n_samples, **kwargs):
     return {'pts' : pts, 'cnts' : cnts, 'dx' : kwargs['dx'], 'dy' : kwargs['dy'], 'dz' : kwargs['dz']}
 
 def cube_sample_pdf(pts, cnts, weights, indices_rs, N_samples, is_train):
-    print(f"pts.shape={pts.shape}, cnts.shape={cnts.shape}, weights.shape={weights.shape}, indices_rs.shape={indices_rs.shape}")
+    # print(f"pts.shape={pts.shape}, cnts.shape={cnts.shape}, weights.shape={weights.shape}, indices_rs.shape={indices_rs.shape}")
     centers = torch.gather(pts - cnts[:, :, None], -2, indices_rs[..., None].expand(*pts.shape))
     mids = .5 * (centers[:,:, 1:] + centers[:,:, :-1])
     # print(f"mids.shape={mids.shape}")
