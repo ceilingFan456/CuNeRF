@@ -1,11 +1,13 @@
 from sampling import cube_sampling_no_batch, cube_sampling
 from rendering import cube_rendering_no_batch, cube_rendering
+from importance import cube_imp_no_batch, cube_imp
 
 import torch 
 import math 
 import random
 import numpy as np
 
+## check sampling function, rendering function and importance sampling function. 
 def test0():
     print("####### checking sampling #######")
     batch = torch.rand(16, 7)
@@ -89,6 +91,40 @@ def test0():
             print(f"res2['check'][{i}][{j}]={res2['check'][i][j]}")
             print(f"res3['check'][0][{i}][{j}]={res3['check'][0][i][j]}")
             print()
+
+    print("####### checking importance #######")
+    seed = 0
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    # res4 = cube_imp_no_batch(res2['weights'], res2['indices_rs'], res0['pts'], res0['cnts'], True, 64)
+    res4 = cube_imp_no_batch(**res2, **res0, is_train=True, n_samples=64)
+    
+    
+    seed = 0
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    # res5 = cube_imp(res3['weights'], res3['indices_rs'], res1['pts'], res1['cnts'], True, 64)
+    res5 = cube_imp(**res1, **res3, is_train=True, n_samples=64)
+
+    
+    print(f"pts:")
+    for i in range(1):
+        for j in range(128):
+            if 1:
+                print(f"res4['pts'][{i}][{j}]={res4['pts'][i][j]}")
+                print(f"res5['pts'][0][{i}][{j}]={res5['pts'][0][i][j]}")
+                print()
+
+    print(f"cnts:")
+    for i in range(16):
+        print(f"res4['cnts'][{i}]={res4['cnts'][i]}")
+        print(f"res5['cnts'][0][{i}]={res5['cnts'][0][i]}")
     
 if __name__ == '__main__':
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
