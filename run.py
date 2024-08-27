@@ -90,7 +90,7 @@ def train(cfg):
                     if cfg.i_step % cfg.save_iter == 0: cfg.Save()
                     if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
                 
-                cfg.pbar.update(gts.shape[0]*(cfg.bs_train//1024)*(os.environ["CUDA_VISIBLE_DEVICES"].split(',').__len__()))
+                cfg.pbar.update((os.environ["CUDA_VISIBLE_DEVICES"].split(',').__len__()))
                 # cfg.pbar.update(1)
 
                 # update step and pbar
@@ -109,19 +109,30 @@ def eval(cfg):
     dataloader = tqdm(cfg.evalloader)
     with torch.no_grad():
         for idx, batch in enumerate(dataloader):
+            # print(f"idx={idx}")
+            # print(f"batch[0].shape={batch[0].shape}")
+            # print(f"batch[1].shape={batch[1].shape}")
             dataloader.set_description(f'[EVAL] : {idx}')
             coords, depths = batch
-            coords0 = coords.squeeze(0)
-            for cidx in range(math.ceil(W * H / S)):
-                chunk = list(range(S * cidx, min(S * (cidx + 1), len(coords))))
-                # select_coords = coords[]
-                print(f"select_coords.shape={select_coords.shape}")
-                select_coords0 = coords0[list(range(S * cidx, min(S * (cidx + 1), len(coords0))))]
-                print(f"select_coords0.shape={select_coords0.shape}")
+            # for cidx in range(math.ceil(W * H / S)):
+            #     chunk = list(range(S * cidx, min(S * (cidx + 1), len(coords))))
+            #     # select_coords = coords[]
+            #     print(f"select_coords.shape={select_coords.shape}")
+            #     select_coords0 = coords0[list(range(S * cidx, min(S * (cidx + 1), len(coords0))))]
+            #     print(f"select_coords0.shape={select_coords0.shape}")
                 
-                rgb, _ = cfg.Render(select_coords, depths, is_train=False)
-                pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
-            assert S * (cidx + 1) >= H * W
+            #     rgb, _ = cfg.Render(select_coords, depths, is_train=False)
+            #     pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
+            # assert S * (cidx + 1) >= H * W
+
+            for cidx in range(math.ceil(W * H / S)):
+                l = S * cidx
+                r = min(S * (cidx + 1), W*H)
+                chunk = coords[:, l:r]
+                rgb, _ = cfg.Render(chunk, depths, is_train=False)
+                s = idx * coords.shape[0]
+                e = min((idx + 1) * coords.shape[0], N)
+                pds[s:e, l:r] = rgb.cpu().numpy() 
 
         pds = pds.reshape(N, W, H)
         cfg.evaluation(pds)
