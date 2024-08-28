@@ -79,7 +79,7 @@ def train(cfg):
             # cfg.Update_grad()
             cfg.optim.step()
 
-            if cfg.i_step % 5000 == 0:
+            if cfg.i_step % 500 == 0:
                 for param_group in cfg.optim.param_groups:
                     print(f"[GPU {cfg.rank}] Learning rate: {param_group['lr']}")
 
