@@ -148,7 +148,8 @@ class Cfg:
             if not self.resume:
                 self.log_file.write(text_cfgs)
             
-            print (text_cfgs)
+            if self.rank == 0:
+                print (text_cfgs)
 
     def Record(self, **params):
         for k, v in params.items():
