@@ -80,7 +80,9 @@ class Base(Dataset):
         coords = self.sampling(coords, xy_inds, z_coord, self.pad)
         
         data = self.data[z_ind, xy_inds[:, 0], xy_inds[:, 1]]
-        return (data, coords, (np.float32(head), np.float32(tail))) if self.mode == 'train' else (coords, (np.float32(head), np.float32(tail)))
+        # return (data, coords, (np.float32(head), np.float32(tail))) if self.mode == 'train' else (coords, (np.float32(head), np.float32(tail)))
+        return (data, coords, torch.tensor([head, tail])) if self.mode == 'train' else (coords, torch.tensor([head, tail]))
+
 
     def multi_view_and_scale_sampling(self, zpos, angle, scale):
         H, W, P = [int(self.cam_scale * scale * a) for a in [self.H, self.W, self.pad]]

@@ -65,7 +65,7 @@ def train(cfg):
             cfg.optim.zero_grad()
             gts, coords, depths = batch
             # gts, coords = gts.squeeze(0), coords.squeeze(0)
-            gts = gts.squeeze(0)
+            # gts = gts.squeeze(0)
             # rgb, rgb0 = cfg.Render(coords, depths, is_train=True)
             rgb, rgb0 = cfg.fullmodel((coords, depths))
             loss = cfg.loss_fn(rgb, rgb0, gts)
@@ -108,13 +108,22 @@ def eval(cfg):
         for idx, batch in enumerate(dataloader):
             dataloader.set_description(f'[EVAL] : {idx}')
             coords, depths = batch
-            coords = coords.squeeze(0)
+            # coords = coords.squeeze(0)
+            # for cidx in range(math.ceil(W * H / S)):
+            #     select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
+            #     rgb, _ = cfg.Render(select_coords, depths, is_train=False)
+            #     pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
+            # assert S * (cidx + 1) >= H * W
+            
             for cidx in range(math.ceil(W * H / S)):
-                select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
-                rgb, _ = cfg.Render(select_coords, depths, is_train=False)
-                pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
-            assert S * (cidx + 1) >= H * W
-
+                l = S * cidx
+                r = min(S * (cidx + 1), W*H)
+                chunk = coords[:, l:r]
+                rgb, _ = cfg.Render(chunk, depths, is_train=False)
+                s = idx * coords.shape[0]
+                e = min((idx + 1) * coords.shape[0], N)
+                pds[s:e, l:r] = rgb.cpu().numpy() 
+                
         pds = pds.reshape(N, W, H)
         cfg.evaluation(pds)
 
