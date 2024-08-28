@@ -123,7 +123,7 @@ def eval(cfg):
                 s = idx * coords.shape[0]
                 e = min((idx + 1) * coords.shape[0], N)
                 pds[s:e, l:r] = rgb.cpu().numpy() 
-                
+
         pds = pds.reshape(N, W, H)
         cfg.evaluation(pds)
 
@@ -191,5 +191,6 @@ if __name__ == '__main__':
         
         globals()[args.mode](Cfg(args))
     else:
+        print("add a dummy change for git push")
         world_size = torch.cuda.device_count()
         mp.spawn(main, args=(world_size, args), nprocs=world_size)
