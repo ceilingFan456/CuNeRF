@@ -280,8 +280,8 @@ class Cfg:
         
         ans0 = self.sample_fn(coord_batch, depths, is_train=is_train, R=R)
         
-        a = ans0['pts']
-        b = ans0['cnts']
+        # a = ans0['pts']
+        # b = ans0['cnts']
         # print(f"pts: {a.shape}")
         # print(f"cnts: {b.shape}")
 
