@@ -20,7 +20,7 @@ import torch
 from torch.utils.data import DataLoader
 from . import dataset, loss, metrics, rendering, sampling, models, importance
 from .utils import dfs_update_configs, clip_grad, lr_decay, merge_configs, mlt_process
-from .models import FullModel
+from .models import FullModel, NGPModel
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import destroy_process_group
@@ -111,6 +111,13 @@ class Cfg:
                 self.fullmodel = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
             else:
                 model = FullModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+                self.fullmodel = DDP(model, device_ids=[self.rank])
+
+        def load_ngpmodel(self, cfg):
+            if not self.cfg["multi_gpu"]:
+                self.fullmodel = NGPModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+            else:
+                model = NGPModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
                 self.fullmodel = DDP(model, device_ids=[self.rank])
             
             
@@ -273,7 +280,7 @@ class Cfg:
         value = loss.item()
         self.m_psnr.append(self.metrics.psnr(rgb, gts))
         self.m_loss.append(value)
-        self.Update_lr()
+        # self.Update_lr()
         
     def Render(self, coord_batch, depths, is_train=False, R=None):
         # print(f"coord_batch: {coord_batch.shape}")

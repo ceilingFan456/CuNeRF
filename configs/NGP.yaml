@@ -1,16 +1,16 @@
 # example config for CuNeRF
 
 # training
-max_iter : 100000 ##200000
-eval_iter: 10000
+max_iter : 80000 ##200000
+eval_iter: 20000
 save_iter: $eval_iter
 log_iter : 100
-bs_train : 1024 # batch size 
+bs_train : 8192 # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
-N_eval   : 
-lr       : 0.002
-lr_final : 0.00002
+N_eval   : 50
+lr       : 0.01 ## 0.002
+lr_final : 0.01 ## 0.00002
 workers  : 4
 
 # modeling
@@ -18,7 +18,7 @@ stype     : cube
 radius    : 1
 n_samples : 64
 n_imps    : 64
-mtype     : NeRFMLP
+mtype     : NGPMLP
 
 # test
 zpos      : [0]
@@ -34,7 +34,7 @@ save_path   : save
 log_path    : save
 
 loss : 
-  name : Adaptive_MSE_LOSS
+  name : MSE_LOSS
 
 sampling : 
   stype     : $stype
@@ -56,6 +56,28 @@ model :
   skips   : [4]
   max_freq: 10
   p_fns   : ['sin', 'cos']
+
+model:
+  name: $mtype
+
+  n_input_dims: 3
+  n_output_dims: 2
+
+  encoding:
+    otype: HashGrid
+    n_levels: 16 ## level of hierachies 
+    n_features_per_level: 4 ## F
+    log2_hashmap_size: 19 
+    base_resolution: 16
+    per_level_scale: 1.5
+  
+  ## fast small mlp with tinycudann
+  network:
+    otype: FullyFusedMLP
+    activation: ReLU
+    output_activation: None
+    n_neurons: 64
+    n_hidden_layers: 2
 
 model_ft : $model
 
@@ -124,5 +146,5 @@ clip_grad :
   max_val  : 0.1
   max_norm : 0.1
 
-fullmodel:
+ngpmodel:
   dummy: True

@@ -13,7 +13,7 @@ import random
 import numpy as np
 import os 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
@@ -83,6 +83,9 @@ def train(cfg):
                 for param_group in cfg.optim.param_groups:
                     print(f"[GPU {cfg.rank}] Learning rate: {param_group['lr']}")
 
+            with torch.no_grad():
+                cfg.Update_lr()
+
             if not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0):
                 with torch.no_grad():
                     cfg.Update(loss, rgb.cpu().numpy(), gts.cpu().numpy())
@@ -119,7 +122,7 @@ def eval(cfg):
                 l = S * cidx
                 r = min(S * (cidx + 1), W*H)
                 chunk = coords[:, l:r]
-                rgb, _ = cfg.Render(chunk, depths, is_train=False)
+                rgb, _ = cfg.fullmodel.module.eval_forward((chunk, depths,))
                 s = idx * coords.shape[0]
                 e = min((idx + 1) * coords.shape[0], N)
                 pds[s:e, l:r] = rgb.cpu().numpy() 
@@ -158,20 +161,20 @@ def test(cfg):
     if cfg.save_map: 
         cfg.Save_test_map(pds, zs, angles, scales)
 
-def ddp_setup(rank, world_size):
+def ddp_setup(rank, world_size, port):
     """
     Args:
         rank: Unique identifier of each process
         world_size: Total number of processes
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
+    os.environ["MASTER_PORT"] = str(port)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
     
-def main(rank, worldsize, args):
+def main(rank, worldsize, args, port):
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    ddp_setup(rank, worldsize)
+    ddp_setup(rank, worldsize, port)
     globals()[args.mode](Cfg(args, rank))
     
     
@@ -193,4 +196,5 @@ if __name__ == '__main__':
     else:
         print("add a dummy change for git push")
         world_size = torch.cuda.device_count()
-        mp.spawn(main, args=(world_size, args), nprocs=world_size)
+        port = random.randint(10000, 20000)
+        mp.spawn(main, args=(world_size, args, port), nprocs=world_size)
