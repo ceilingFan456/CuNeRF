@@ -1,7 +1,7 @@
 # example config for CuNeRF
 
 # training
-max_iter : 100000 ##200000
+max_iter : 120000 ##200000
 eval_iter: 10000
 save_iter: $eval_iter
 log_iter : 100

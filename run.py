@@ -13,7 +13,7 @@ import random
 import numpy as np
 import os 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2,3" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
@@ -22,6 +22,8 @@ import torch
 import torch.nn.functional as F
 
 from src import Cfg, utils
+
+import time
 
 
 def argParse():
@@ -69,6 +71,7 @@ def train(cfg):
             # rgb, rgb0 = cfg.Render(coords, depths, is_train=True)
             rgb, rgb0 = cfg.fullmodel((coords, depths))
             loss = cfg.loss_fn(rgb, rgb0, gts)
+            # print(f"[GPU {cfg.rank}] Loss: {loss.item()}")
             loss.backward()
             # for name, param in cfg.model.named_parameters():
             #     if param.requires_grad and param.grad is None:
@@ -107,6 +110,8 @@ def eval(cfg):
     N, W, H, S = cfg.evalset.__len__(), cfg.evalset.W, cfg.evalset.H, cfg.bs_eval
     pds = np.zeros((N, W * H))
     dataloader = tqdm(cfg.evalloader)
+
+    start_time = time.time()
     with torch.no_grad():
         for idx, batch in enumerate(dataloader):
             dataloader.set_description(f'[EVAL] : {idx}')
@@ -128,6 +133,12 @@ def eval(cfg):
                 pds[s:e, l:r] = rgb.cpu().numpy() 
 
         pds = pds.reshape(N, W, H)
+        
+        ## log timing
+        end_time = time.time()
+        elapsed_time = (end_time - start_time) / len(dataloader)
+        cfg.timing_file.write(f"{elapsed_time}\n")
+
         cfg.evaluation(pds)
 
 def test(cfg):

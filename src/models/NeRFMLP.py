@@ -40,11 +40,16 @@ class NGPMLP(torch.nn.Module):
         super(NGPMLP, self).__init__()
         for k, v in params.items():
             setattr(self, k, v)
-        self.model = tcnn.NetworkWithInputEncoding(n_input_dims=self.n_input_dims, 
-                                                   n_output_dims=self.n_output_dims, 
-                                                   encoding_config=self.encoding, 
-                                                   network_config=self.network,
-                                                   )
+        # self.model = tcnn.NetworkWithInputEncoding(n_input_dims=self.n_input_dims, 
+        #                                            n_output_dims=self.n_output_dims, 
+        #                                            encoding_config=self.encoding, 
+        #                                            network_config=self.network,
+        #                                            )
+
+        self.encoding = tcnn.Encoding(n_input_dims=self.n_input_dims, encoding_config=self.encoding)
+        self.network = tcnn.Network(n_input_dims=self.encoding.n_output_dims, n_output_dims=self.n_output_dims, network_config=self.network)
+        self.model = torch.nn.Sequential(self.encoding, self.network)
+ 
     def forward(self, x):
         shape = x.shape
         x = x.reshape(-1, self.n_input_dims)
@@ -55,6 +60,7 @@ class NGPMLP(torch.nn.Module):
 class NGPModel(torch.nn.Module):
     def __init__(self, coarse, fine, sample_fn, render_fn, imp_fn):
         super(NGPModel, self).__init__()
+        print("Using NGPModel")
         self.coarse = coarse
         self.sample_fn = sample_fn
         self.render_fn = render_fn
@@ -63,11 +69,15 @@ class NGPModel(torch.nn.Module):
     def forward(self, x):
         coords, depths = x
         # coords = coords.squeeze(0)
+        coords = coords / (2*math.pi) + 0.5
+        depths = depths / (2*math.pi) + 0.5
         
         return self.Render(coords, depths, is_train=True)
 
     def eval_forward(self, x):
         coords, depths = x        
+        coords = coords / (2*math.pi) + 0.5
+        depths = depths / (2*math.pi) + 0.5
         return self.Render(coords, depths, is_train=False)
     
     def Render(self, coord_batch, depths, is_train=False, R=None):
@@ -78,13 +88,14 @@ class NGPModel(torch.nn.Module):
         # ans = self.imp_fn(**ans0, **out0, is_train=is_train)
         # raw = self.fine(ans['pts'])
         # out = self.render_fn(raw, **ans)
-        return out0['rgb'], out0['rgb']
+        return out0['rgb'], list(self.coarse.network.parameters())[0]
     
     
 
 class FullModel(torch.nn.Module):
     def __init__(self, coarse, fine, sample_fn, render_fn, imp_fn):
         super(FullModel, self).__init__()
+        print("Using FullModel")
         self.coarse = coarse
         self.fine = fine
         self.sample_fn = sample_fn

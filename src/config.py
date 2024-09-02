@@ -149,6 +149,7 @@ class Cfg:
         
         if self.mode == 'train':
             self.log_file = open(os.path.join(self.log_path, 'logs.txt'), 'a' if self.resume else 'w')
+            self.timing_file = open(os.path.join(self.log_path, 'timing.txt'), 'a' if self.resume else 'w')
             # with open(os.path.join(self.log_path, 'config.yaml'), 'w') as yf:
             #     yaml.safe_dump(cfg, yf, indent=0)
 

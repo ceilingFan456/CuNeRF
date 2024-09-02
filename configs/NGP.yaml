@@ -1,16 +1,16 @@
 # example config for CuNeRF
 
 # training
-max_iter : 80000 ##200000
+max_iter : 100000 ##200000
 eval_iter: 20000
 save_iter: $eval_iter
 log_iter : 100
 bs_train : 8192 # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
-N_eval   : 50
+N_eval   : 
 lr       : 0.01 ## 0.002
-lr_final : 0.01 ## 0.00002
+lr_final : 0.001 ## 0.00002
 workers  : 4
 
 # modeling
@@ -34,7 +34,7 @@ save_path   : save
 log_path    : save
 
 loss : 
-  name : MSE_LOSS
+  name : MSE_LOSS_REGULARISATION
 
 sampling : 
   stype     : $stype
@@ -66,7 +66,7 @@ model:
   encoding:
     otype: HashGrid
     n_levels: 16 ## level of hierachies 
-    n_features_per_level: 4 ## F
+    n_features_per_level: 2 ## F
     log2_hashmap_size: 19 
     base_resolution: 16
     per_level_scale: 1.5
@@ -126,8 +126,8 @@ dataloader :
 optim :
   name : Adam
   lr   : $lr
-  betas: [0.9, 0.999]
-  eps  : 0.000001
+  betas: [0.9, 0.99]
+  eps  : 0.000000000000001 ## 1e-15
 
 metrics : 
   psnr  : True
