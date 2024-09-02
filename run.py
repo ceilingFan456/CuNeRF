@@ -127,7 +127,8 @@ def eval(cfg):
                 l = S * cidx
                 r = min(S * (cidx + 1), W*H)
                 chunk = coords[:, l:r]
-                rgb, _ = cfg.fullmodel.module.eval_forward((chunk, depths,))
+                # rgb, _ = cfg.fullmodel.module.eval_forward((chunk, depths,))
+                rgb, _ = cfg.fullmodel((chunk, depths,))
                 s = idx * coords.shape[0]
                 e = min((idx + 1) * coords.shape[0], N)
                 pds[s:e, l:r] = rgb.cpu().numpy() 

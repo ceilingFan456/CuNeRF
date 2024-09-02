@@ -92,20 +92,26 @@ if __name__ == "__main__":
     # folder4 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_coarse_and_fine/eval'
     # folder5 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_single/eval'
     folder4 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_single_need_post'
-    ds4 = "ngp single"
+    ds4 = "ngp bad"
     
     folder6 = '/home/simtech/Qiming/CuNeRF-gt/save/CuNeRFx2/case_00000'
     ds6 = "original CuNeRF"
 
+    folder8 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004'
+    ds8 = "eval w rand & s=1" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
+
+    folder9 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004_post-smooth'
+    ds9 = "eval w rand & s=1 & post smooth" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
 
 
 
-    case_00004 = [folder1, folder2, folder7]
-    case_00004_des = [ds1, ds2, ds7]
+
+    case_00004 = [folder1, folder2, folder8, folder9]
+    case_00004_des = [ds1, ds2, ds8, ds9]
     
-    case_00000 = [folder3, folder6, folder4]
-    case_00000_des = [ds3, ds6, ds4]
+    case_00000 = [folder3, folder6]
+    case_00000_des = [ds3, ds6]
     
-    compare_images(case_00000, case_00000_des) ## all too white post-processing
-    # compare_images(case_00004, case_00004_des) ## black and white -> intpolation
+    # compare_images(case_00000, case_00000_des) ## all too white post-processing
+    compare_images(case_00004, case_00004_des) ## black and white -> intpolation
 

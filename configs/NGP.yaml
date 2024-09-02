@@ -2,10 +2,10 @@
 
 # training
 max_iter : 100000 ##200000
-eval_iter: 20000
+eval_iter: 10000
 save_iter: $eval_iter
 log_iter : 100
-bs_train : 8192 # batch size 
+bs_train : 16384 # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
 N_eval   : 

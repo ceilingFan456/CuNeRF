@@ -88,6 +88,8 @@ class NGPModel(torch.nn.Module):
         # ans = self.imp_fn(**ans0, **out0, is_train=is_train)
         # raw = self.fine(ans['pts'])
         # out = self.render_fn(raw, **ans)
+
+        # out0['rgb'] = out0['rgb'].clamp(0.0, 1.0)
         return out0['rgb'], list(self.coarse.network.parameters())[0]
     
     
