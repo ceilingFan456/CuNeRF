@@ -81,7 +81,17 @@ if __name__ == "__main__":
     ds2 = "original CuNeRF"
     
     folder7 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00004_ngp_single_need_post"
-    ds7 = "ngp single"
+    ds7 = "ngp no rand eval"
+
+    folder8 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004_ngp_rand_eval'
+    ds8 = "eval w rand & s=1" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
+
+    folder9 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004_post-smooth'
+    ds9 = "eval w rand & s=1 & post smooth" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
+
+    folder10 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00004_ngp_rand_eval"
+    ds10 = "ngp rand eval" ## scale = 2
+
 
 
 
@@ -92,25 +102,25 @@ if __name__ == "__main__":
     # folder4 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_coarse_and_fine/eval'
     # folder5 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_single/eval'
     folder4 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_single_need_post'
-    ds4 = "ngp bad"
+    ds4 = "ngp no rand eval"
     
     folder6 = '/home/simtech/Qiming/CuNeRF-gt/save/CuNeRFx2/case_00000'
     ds6 = "original CuNeRF"
 
-    folder8 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004'
-    ds8 = "eval w rand & s=1" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
+    folder11 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_rand_eval"
+    ds11 = 'eval rand' ## scale = 2
 
-    folder9 = '/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00004_post-smooth'
-    ds9 = "eval w rand & s=1 & post smooth" ## with randomness during sampling in evaluation. scale set to 1 to prevent bad in between frame problem
-
-
+    folder12 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00000_ngp_rand_eval"
+    ds12 = 'eval rand & s=1' ## scale = 1
 
 
-    case_00004 = [folder1, folder2, folder8, folder9]
-    case_00004_des = [ds1, ds2, ds8, ds9]
+
+
+    case_00004 = [folder1, folder2, folder7, folder8, folder10]
+    case_00004_des = [ds1, ds2, ds7, ds8, ds10]
     
-    case_00000 = [folder3, folder6]
-    case_00000_des = [ds3, ds6]
+    case_00000 = [folder3, folder6, folder4, folder11, folder12]
+    case_00000_des = [ds3, ds6, ds4, ds11, ds12]
     
     # compare_images(case_00000, case_00000_des) ## all too white post-processing
     compare_images(case_00004, case_00004_des) ## black and white -> intpolation
