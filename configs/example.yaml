@@ -1,9 +1,9 @@
 # example config for CuNeRF
 
 # training
-max_iter : 120000 ##200000
-eval_iter: 10000
-save_iter: $eval_iter
+max_iter : 100000 ##200000
+eval_iter: 20000
+save_iter: 100000
 log_iter : 100
 bs_train : 1024 # batch size 
 bs_eval  : 32768
@@ -29,9 +29,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save
-save_path   : save
-log_path    : save
+result_path : save_mgpu
+save_path   : save_mgpu
+log_path    : save_mgpu
 
 loss : 
   name : Adaptive_MSE_LOSS

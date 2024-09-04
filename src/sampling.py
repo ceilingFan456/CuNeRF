@@ -10,7 +10,7 @@ def cube_sampling(batch, depths, n_samples, is_train, R):
 
     left, right = torch.split(LR, [1, 1], dim=-1) ## (B, b, 1)
     top, bottom = torch.split(TB, [1, 1], dim=-1)
-    steps = int(math.pow(n_samples, 1./3) + 1)
+    steps = round(math.pow(n_samples, 1./3) + 1)
     t_vals = torch.cat([v[...,None] for v in torch.meshgrid(torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps))], -1)
     t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
 
@@ -20,6 +20,7 @@ def cube_sampling(batch, depths, n_samples, is_train, R):
     # z_r = torch.full_like(x_r, 1.).view(-1, n_samples) * far[:, None]
     z_l = near[:, None].expand([B, n_cnts, n_samples])
     z_r = far[:, None].expand([B, n_cnts, n_samples])
+
 
     if is_train:
         x_vals = x_l + t_vals[:, 0] * (x_r - x_l) * torch.rand(B, n_cnts, n_samples)

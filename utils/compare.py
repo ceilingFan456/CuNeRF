@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import math
-from skimage.metrics import peak_signal_noise_ratio
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 def load_image(folder, filename):
     path = os.path.join(folder, filename)
@@ -21,6 +21,11 @@ def compare_images(folders, des):
     img_folders = [os.path.join(folder, 'eval') for folder in folders]
     gt_images = [f for f in os.listdir(img_folders[0]) if f.endswith('_gt.png')]
     gt_images.sort()
+
+    total_ssims = []
+    total_psnrs = []
+    
+    skip = False
     
     for gt_img_name in gt_images:
         base_name = gt_img_name.replace('_gt.png', '')
@@ -32,7 +37,8 @@ def compare_images(folders, des):
             our_imgs.append(load_image(folder, ours_img_name))
 
         ## find downsampled image
-        scale = int(img_folders[0].split('/')[-3].split('x')[-1])
+        tmp = list(filter(lambda x: x.startswith("CuNeRFx") , img_folders[0].split('/')))[0]
+        scale = int(tmp.split('x')[-1])
         down_img = gt_img[::scale, ::scale]
         tmp = np.zeros(gt_img.shape, dtype=gt_img.dtype)
         tmp[:down_img.shape[0], :down_img.shape[1]] = down_img
@@ -42,6 +48,14 @@ def compare_images(folders, des):
         psnrs = []
         for i, folder in enumerate(img_folders):
             psnrs.append(peak_signal_noise_ratio(gt_img, our_imgs[i]))
+        total_psnrs.append(psnrs)
+
+        # Calculate ssim
+        ssims = []
+        for i, folder in enumerate(img_folders):
+            # ssims.append(structural_similarity(gt_img, our_imgs[i], data_range=our_imgs[i].max() - our_imgs[i].min()))
+            ssims.append(structural_similarity(gt_img, our_imgs[i], win_size=11, data_range=255))
+        total_ssims.append(ssims)
 
         # inference timing
         timing = []
@@ -57,21 +71,27 @@ def compare_images(folders, des):
         our_imgs_texts = []
         for i, img in enumerate(our_imgs):
             a = add_text_to_image(img.copy(), f'PSNR: {psnrs[i]:.2f}', position=(10, 30))
-            b = add_text_to_image(a, f'Timing: {timing[i]:.2f}', position=(10, 60))
-            c = add_text_to_image(b, f'{des[i]}', position=(10, 90))
+            a = add_text_to_image(a, f'SSIM: {ssims[i]:.2f}', position=(10, 60))
+            b = add_text_to_image(a, f'Timing: {timing[i]:.2f}', position=(10, 90))
+            c = add_text_to_image(b, f'{des[i]}', position=(10, 120))
             our_imgs_texts.append(c)
 
         # Concatenate images horizontally
         combined_image = np.hstack([gt_img, down_img] + our_imgs_texts)
 
         # Show the combined image
-        window_name = f"Comparison: {base_name}"
-        cv2.imshow(window_name, combined_image)
-        key = cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if not skip:
+            window_name = f"Comparison: {base_name}"
+            cv2.imshow(window_name, combined_image)
+            key = cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
         if key == ord('q'):
-            break
+            skip = True
+
+    # Print the average SSIM values
+    print(f"Average SSIM values: {np.mean(total_ssims, axis=0)}")
+    print(f"Average PSNR values: {np.mean(total_psnrs, axis=0)}")
 
 if __name__ == "__main__":
     folder1 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00004_mgpu" 
@@ -110,18 +130,42 @@ if __name__ == "__main__":
     folder11 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00000_ngp_rand_eval"
     ds11 = 'eval rand' ## scale = 2
 
-    folder12 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00000_ngp_rand_eval"
-    ds12 = 'eval rand & s=1' ## scale = 1
+    # folder12 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00000_ngp_rand_eval"
+    # ds12 = 'eval rand & s=1' ## scale = 1
+    ## somehow the training is not working and gives black imaes while works for case 00004.
 
 
+
+
+
+
+    folder13 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00032"
+    ds13 = "ngp eval rand"
+
+    
+    
+    folder14 = "/home/simtech/Qiming/CuNeRF-mgpu/save-1/CuNeRFx2/seed_26_ngp/case_00089"
+    ds14 = "ngp" ## evaluation rand, scale = 2, seed = 2, layer = 3
+    
+    folder15 = "/home/simtech/Qiming/CuNeRF-mgpu/save_mgpu/CuNeRFx2/case_00089"
+    ds15 = "mgpu" 
 
 
     case_00004 = [folder1, folder2, folder7, folder8, folder10]
     case_00004_des = [ds1, ds2, ds7, ds8, ds10]
     
-    case_00000 = [folder3, folder6, folder4, folder11, folder12]
-    case_00000_des = [ds3, ds6, ds4, ds11, ds12]
+    case_00000 = [folder3, folder6, folder4, folder11]
+    case_00000_des = [ds3, ds6, ds4, ds11]
+
+    case_00032 = [folder13]
+    case_00032_des = [ds13]
+
+    case_00089 = [folder14, folder15]
+    case_00089_des = [ds14, ds15]
     
     # compare_images(case_00000, case_00000_des) ## all too white post-processing
-    compare_images(case_00004, case_00004_des) ## black and white -> intpolation
+    # compare_images(case_00004, case_00004_des) ## black and white -> intpolation
 
+    # compare_images(case_00032, case_00032_des) 
+
+    compare_images(case_00089, case_00089_des) 

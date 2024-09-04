@@ -82,9 +82,9 @@ def train(cfg):
             # cfg.Update_grad()
             cfg.optim.step()
 
-            if cfg.i_step % 500 == 0:
-                for param_group in cfg.optim.param_groups:
-                    print(f"[GPU {cfg.rank}] Learning rate: {param_group['lr']}")
+            # if cfg.i_step % 500 == 0:
+            #     for param_group in cfg.optim.param_groups:
+            #         print(f"[GPU {cfg.rank}] Learning rate: {param_group['lr']}")
 
             with torch.no_grad():
                 cfg.Update_lr()
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     if not args.multi_gpu: 
 
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        seed = 0
+        seed = 12341
 
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
@@ -209,4 +209,5 @@ if __name__ == '__main__':
         print("add a dummy change for git push")
         world_size = torch.cuda.device_count()
         port = random.randint(10000, 20000)
+        # port = 12345
         mp.spawn(main, args=(world_size, args, port), nprocs=world_size)
