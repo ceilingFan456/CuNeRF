@@ -89,6 +89,12 @@ def compare_images(folders, des):
         if key == ord('q'):
             skip = True
 
+        if key == ord('e'):
+            break
+
+        if key == ord('s'):
+            cv2.imwrite(f"{base_name}_comparison.png", combined_image)
+
     # Print the average SSIM values
     print(f"Average SSIM values: {np.mean(total_ssims, axis=0)}")
     print(f"Average PSNR values: {np.mean(total_psnrs, axis=0)}")
@@ -139,7 +145,7 @@ if __name__ == "__main__":
 
 
 
-    folder13 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx1/case_00032"
+    folder13 = "/home/simtech/Qiming/CuNeRF-mgpu/save-1/CuNeRFx1/case_00032"
     ds13 = "ngp eval rand"
 
     
@@ -149,7 +155,42 @@ if __name__ == "__main__":
     
     folder15 = "/home/simtech/Qiming/CuNeRF-mgpu/save_mgpu/CuNeRFx2/case_00089"
     ds15 = "mgpu" 
+    
+    folder16 = "/home/simtech/Qiming/CuNeRF-mgpu/save-1/CuNeRFx2/seed_26_ngp/case_00052"
+    ds16 = "ngp"
 
+    folder17 = "/home/simtech/Qiming/CuNeRF-mgpu/save_mgpu/CuNeRFx2/case_00052"
+    ds17 = "mgpu"
+    
+    
+    
+    folder18 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00010_r=1"
+    ds18 = "ngp r=1"
+    
+    folder19 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00010_r=2"
+    ds19 = "ngp r=2"
+
+    folder20 = "/home/simtech/Qiming/CuNeRF-mgpu/save/CuNeRFx2/case_00010_l4"
+    ds20 = "ngp r=half"
+
+    folder23 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00010_zs=4"
+    ds23 = "ngp r=half zs=4"
+
+    
+    folder24 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00010_zs=6"
+    ds24 = "ngp r=half zs=6"
+    
+    
+
+    
+    
+    
+    
+    folder21 = "/home/simtech/Qiming/CuNeRF-mgpu/save-1/CuNeRFx2/seed_26_ngp/case_00089"
+    ds21 = "ngp r=half"
+
+    folder22 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00089_r=2"
+    ds22 = "ngp r=2"
 
     case_00004 = [folder1, folder2, folder7, folder8, folder10]
     case_00004_des = [ds1, ds2, ds7, ds8, ds10]
@@ -162,10 +203,29 @@ if __name__ == "__main__":
 
     case_00089 = [folder14, folder15]
     case_00089_des = [ds14, ds15]
+
+    case_00052 = [folder16, folder17]
+    case_00052_des = [ds16, ds17]
+
+    
+    case_00010 = [folder20, folder18, folder19, folder23, folder24]
+    case_00010_des = [ds20, ds18, ds19, ds23, ds24]
+    
+    
+    
+    case_00089_radius = [folder21, folder22]
+    case_00089_radius_des = [ds21, ds22]
+    
     
     # compare_images(case_00000, case_00000_des) ## all too white post-processing
     # compare_images(case_00004, case_00004_des) ## black and white -> intpolation
 
     # compare_images(case_00032, case_00032_des) 
 
-    compare_images(case_00089, case_00089_des) 
+    # compare_images(case_00089, case_00089_des) 
+    
+    # compare_images(case_00052, case_00052_des)
+
+    compare_images(case_00010, case_00010_des) ## effect of radius
+
+    # compare_images(case_00089_radius, case_00089_radius_des) ## effect of radius

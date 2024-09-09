@@ -5,8 +5,8 @@ set +e
 
 BASE_DIR="/home/simtech/Qiming/kits19/data"
 CONFIG_FILE="configs/NGP.yaml"
-SEED=42  # Set your desired seed value here
-SCALE=2  # Set your desired scale value here
+SEED=26  # Set your desired seed value here
+SCALE=4  # Set your desired scale value here
 
 # Set up a random seed function using the SEED variable
 random_source() {

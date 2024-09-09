@@ -13,6 +13,8 @@ lr       : 0.002
 lr_final : 0.00002
 workers  : 4
 
+z_scaler : 1
+
 # modeling
 stype     : cube
 radius    : 1
@@ -68,6 +70,7 @@ dataset :
     radius  : $radius
     bsize   : $bs_train
     modality: $modality 
+    z_scaler: $z_scaler
 
   eval :
     file    : $file
@@ -76,6 +79,7 @@ dataset :
     N_eval  : $N_eval
     bsize   : $bs_eval
     modality: $modality 
+    z_scaler: $z_scaler
 
   test :
     file      : $file

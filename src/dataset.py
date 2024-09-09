@@ -76,7 +76,7 @@ class Base(Dataset):
             xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
             z_ind = self.vals[index]
 
-        head, z_coord, tail = [self.z_trans(z) for z in [z_ind - self.pad, z_ind, z_ind + self.pad]]
+        head, z_coord, tail = [self.z_trans(z) for z in [z_ind - self.pad * self.z_scaler, z_ind, z_ind + self.pad * self.z_scaler]]
         coords = self.sampling(coords, xy_inds, z_coord, self.pad)
         
         data = self.data[z_ind, xy_inds[:, 0], xy_inds[:, 1]]

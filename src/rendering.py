@@ -27,7 +27,7 @@ def cube_rendering(raw, pts, cnts, dx, dy, dz):
     rgb_map = torch.sum(weights * rgb.squeeze(-1), -1)
 
     return {'rgb' : rgb_map, 'weights' : weights, 'indices_rs' : indices_rs, 'check': rgb}
-
+    
 # def cube_rendering(raw, pts, cnts, dx, dy, dz):
 #     norm = torch.sqrt(torch.square(dx) + torch.square(dy) + torch.square(dz))
 #     raw2beta = lambda raw, dists, rs, act_fn=F.relu : -act_fn(raw) * dists * torch.square(rs) * 4 * math.pi

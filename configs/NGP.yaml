@@ -1,8 +1,8 @@
 # example config for CuNeRF
 
 # training
-max_iter : 30000 ##200000
-eval_iter: 30000
+max_iter : 20000 ##200000
+eval_iter: 20000
 save_iter: 10000
 log_iter : 100
 bs_train : 1024  # batch size 
@@ -12,6 +12,8 @@ N_eval   :
 lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
+
+z_scaler : 4
 
 # modeling
 stype     : cube
@@ -29,9 +31,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_ngp
-save_path   : save_ngp
-log_path    : save_ngp
+result_path : save_ngp_avg
+save_path   : save_ngp_avg
+log_path    : save_ngp_avg
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -47,15 +49,6 @@ importance :
   stype     : $stype
   n_samples : $n_imps
 
-model : 
-  name    : $mtype
-  netD    : 8
-  netW    : 256
-  in_ch   : 3
-  out_ch  : 2
-  skips   : [4]
-  max_freq: 10
-  p_fns   : ['sin', 'cos']
 
 model:
   name: $mtype
@@ -90,6 +83,7 @@ dataset :
     radius  : $radius
     bsize   : $bs_train
     modality: $modality 
+    z_scaler: $z_scaler
 
   eval :
     file    : $file
@@ -98,6 +92,7 @@ dataset :
     N_eval  : $N_eval
     bsize   : $bs_eval
     modality: $modality 
+    z_scaler: $z_scaler
 
   test :
     file      : $file
@@ -108,6 +103,7 @@ dataset :
     zpos      : $zpos
     cam_scale : $cam_scale
     asteps    : $asteps
+    z_scaler  : $z_scaler
 
 dataloader :
   mode : $mode
