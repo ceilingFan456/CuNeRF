@@ -2,8 +2,8 @@
 
 # training
 max_iter : 100000 ##200000
-eval_iter: 20000
-save_iter: 100000
+eval_iter: 100000
+save_iter: 20000
 log_iter : 100
 bs_train : 1024 # batch size 
 bs_eval  : 32768
@@ -32,15 +32,15 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_mgpu
-save_path   : save_mgpu
-log_path    : save_mgpu
+result_path : save_vanilla
+save_path   : save_vanilla
+log_path    : save_vanilla
 
 loss : 
   name : Adaptive_MSE_LOSS
 
 sampling : 
-  stype     : $stype
+  stype     : z
   n_samples : $n_samples
 
 rendering :

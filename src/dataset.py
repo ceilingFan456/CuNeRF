@@ -118,6 +118,13 @@ class Medical3D(Base):
         self.data = self.align(data)
         self.len, self.H, self.W = self.data.shape
         print (self.len, self.H, self.W)
+        
+        ## resize the data to 512 x 512 x 512
+        if self.normalise_to_512:
+            self.data = self.super_sampling_in_z(self.data)
+            self.len, self.H, self.W = self.data.shape
+            print (self.len, self.H, self.W)
+        
         self.setup()
 
     def align(self, data):
@@ -148,3 +155,20 @@ class Medical3D(Base):
 
     def getLabel(self):
         return self.data[self.vals].cpu().numpy()
+
+    ## super sampling in z direction to get 512 x 512 x 512
+    def super_sampling_in_z(self, data):
+        ## generate the nearest z frame
+        new_data = torch.linspace(0, 511, 512).float()
+        new_data = new_data / 512 * (data.shape[0])
+        new_data = new_data.round() ## nearest frame
+        
+        ## prevent out of bound
+        new_data = torch.clamp(new_data, 0, data.shape[0] - 1).long()
+        print (new_data)
+        
+        ## view as 3D for gathering 
+        new_data = new_data[..., None, None]
+        new_data = new_data.expand(512, 512, 512)
+        new_data = torch.gather(data, 0, new_data)
+        return new_data

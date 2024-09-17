@@ -11,12 +11,35 @@ def load_file(filepath):
     data = torch.from_numpy(data).float().cuda()
     return data
 
-def load_data(filepath):
+def super_sampling_in_z(data, z_size=512):
+    ## generate the nearest z frame
+    new_data = torch.linspace(0, z_size-1, z_size).float()
+    new_data = new_data / z_size * (data.shape[0])
+    new_data = new_data.round() ## nearest frame
+    
+    ## prevent out of bound
+    new_data = torch.clamp(new_data, 0, data.shape[0] - 1).long()
+    print (new_data)
+    
+    ## view as 3D for gathering 
+    new_data = new_data[..., None, None]
+    new_data = new_data.expand(z_size, 512, 512)
+    new_data = torch.gather(data, 0, new_data)
+    return new_data
+
+def load_data(filepath, normalise_to_512=True):
     data = load_file(filepath)
     data = nomalize(data)
     data = align(data)
     length, H, W = data.shape
     print(length, H, W)
+
+    ## resize the data to 512 x 512 x 512
+    if normalise_to_512:
+        data = super_sampling_in_z(data)
+        length, H, W = data.shape
+        print (length, H, W)
+            
     return data
 
 def align(data):
@@ -93,4 +116,6 @@ if __name__ == "__main__":
     parser.add_argument("--n_eval", type=int, default=50)
     parser.add_argument("--scale", type=int, default=2)
     args = parser.parse_args()
+    
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
     main(args)

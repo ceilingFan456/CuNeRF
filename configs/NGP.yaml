@@ -14,6 +14,8 @@ lr_final : 0.001 ## 0.00002
 workers  : 4
 
 z_scaler : 4
+normalise_to_512: True
+
 
 # modeling
 stype     : cube
@@ -84,6 +86,7 @@ dataset :
     bsize   : $bs_train
     modality: $modality 
     z_scaler: $z_scaler
+    normalise_to_512: $normalise_to_512
 
   eval :
     file    : $file
@@ -93,6 +96,7 @@ dataset :
     bsize   : $bs_eval
     modality: $modality 
     z_scaler: $z_scaler
+    normalise_to_512: $normalise_to_512
 
   test :
     file      : $file

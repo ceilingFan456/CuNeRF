@@ -1,27 +1,26 @@
 # example config for CuNeRF
 
 # training
-max_iter : 100000 ##200000
+max_iter : 20000 ##200000
 eval_iter: 20000
-save_iter: 100000
+save_iter: 10000
 log_iter : 100
-bs_train : 1024 # batch size 
+bs_train : 1024  # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
 N_eval   : 
-lr       : 0.002
-lr_final : 0.00002
+lr       : 0.001 ## 0.002
+lr_final : 0.001 ## 0.00002
 workers  : 4
 
-z_scaler : 1
-normalise_to_512: True
+z_scaler : 4
 
 # modeling
 stype     : cube
-radius    : 1
+radius    : 0.5
 n_samples : 64
 n_imps    : 64
-mtype     : NeRFMLP
+mtype     : NGPMLP
 
 # test
 zpos      : [0]
@@ -32,33 +31,46 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_mgpu
-save_path   : save_mgpu
-log_path    : save_mgpu
+result_path : save_ngp_avg
+save_path   : save_ngp_avg
+log_path    : save_ngp_avg
 
 loss : 
-  name : Adaptive_MSE_LOSS
+  name : MSE_LOSS_REGULARISATION
 
 sampling : 
-  stype     : $stype
+  stype     : avg
   n_samples : $n_samples
 
 rendering :
-  stype : $stype
+  stype : avg
 
 importance :
   stype     : $stype
   n_samples : $n_imps
 
-model : 
-  name    : $mtype
-  netD    : 8
-  netW    : 256
-  in_ch   : 3
-  out_ch  : 2
-  skips   : [4]
-  max_freq: 10
-  p_fns   : ['sin', 'cos']
+
+model:
+  name: $mtype
+
+  n_input_dims: 3
+  n_output_dims: 1
+
+  encoding:
+    otype: HashGrid
+    n_levels: 16 ## level of hierachies 
+    n_features_per_level: 2 ## F
+    log2_hashmap_size: 19 
+    base_resolution: 16
+    per_level_scale: 1.5
+  
+  ## fast small mlp with tinycudann
+  network:
+    otype: FullyFusedMLP
+    activation: ReLU
+    output_activation: None
+    n_neurons: 64
+    n_hidden_layers: 4
 
 model_ft : $model
 
@@ -72,7 +84,6 @@ dataset :
     bsize   : $bs_train
     modality: $modality 
     z_scaler: $z_scaler
-    normalise_to_512: $normalise_to_512
 
   eval :
     file    : $file
@@ -82,7 +93,6 @@ dataset :
     bsize   : $bs_eval
     modality: $modality 
     z_scaler: $z_scaler
-    normalise_to_512: $normalise_to_512
 
   test :
     file      : $file
@@ -93,6 +103,7 @@ dataset :
     zpos      : $zpos
     cam_scale : $cam_scale
     asteps    : $asteps
+    z_scaler  : $z_scaler
 
 dataloader :
   mode : $mode
@@ -111,8 +122,8 @@ dataloader :
 optim :
   name : Adam
   lr   : $lr
-  betas: [0.9, 0.999]
-  eps  : 0.000001
+  betas: [0.9, 0.99]
+  eps  : 0.000000000000001 ## 1e-15
 
 metrics : 
   psnr  : True
@@ -131,5 +142,5 @@ clip_grad :
   max_val  : 0.1
   max_norm : 0.1
 
-fullmodel:
+ngpmodel:
   dummy: True

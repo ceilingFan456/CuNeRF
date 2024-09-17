@@ -1,11 +1,11 @@
 # example config for CuNeRF
 
 # training
-max_iter : 100000 ##200000
+max_iter : 40000 ## double gpu
 eval_iter: 20000
-save_iter: 100000
+save_iter: 10000
 log_iter : 100
-bs_train : 1024 # batch size 
+bs_train : 2048 # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
 N_eval   : 
@@ -20,7 +20,7 @@ normalise_to_512: True
 stype     : cube
 radius    : 1
 n_samples : 64
-n_imps    : 64
+n_imps    : 128
 mtype     : NeRFMLP
 
 # test
@@ -32,15 +32,15 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_mgpu
-save_path   : save_mgpu
-log_path    : save_mgpu
+result_path : save-vanilla-512
+save_path   : save-vanilla-512
+log_path    : save-vanilla-512
 
 loss : 
   name : Adaptive_MSE_LOSS
 
 sampling : 
-  stype     : $stype
+  stype     : z
   n_samples : $n_samples
 
 rendering :
@@ -52,11 +52,11 @@ importance :
 
 model : 
   name    : $mtype
-  netD    : 8
+  netD    : 9
   netW    : 256
   in_ch   : 3
   out_ch  : 2
-  skips   : [4]
+  skips   : [4, 9]
   max_freq: 10
   p_fns   : ['sin', 'cos']
 
@@ -113,6 +113,7 @@ optim :
   lr   : $lr
   betas: [0.9, 0.999]
   eps  : 0.000001
+  weight_decay: 0.000001
 
 metrics : 
   psnr  : True
@@ -130,6 +131,7 @@ lr_decay :
 clip_grad :
   max_val  : 0.1
   max_norm : 0.1
+
 
 fullmodel:
   dummy: True

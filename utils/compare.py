@@ -70,14 +70,20 @@ def compare_images(folders, des):
         # Add PSNR text to images
         our_imgs_texts = []
         for i, img in enumerate(our_imgs):
-            a = add_text_to_image(img.copy(), f'PSNR: {psnrs[i]:.2f}', position=(10, 30))
-            a = add_text_to_image(a, f'SSIM: {ssims[i]:.2f}', position=(10, 60))
-            b = add_text_to_image(a, f'Timing: {timing[i]:.2f}', position=(10, 90))
-            c = add_text_to_image(b, f'{des[i]}', position=(10, 120))
+            if i % scale == 0:
+                a = add_text_to_image(img.copy(), f'train', position=(10, 30))
+            else:
+                a = add_text_to_image(img.copy(), f'eval', position=(10, 30))
+                
+            a = add_text_to_image(a, f'PSNR: {psnrs[i]:.2f}', position=(10, 60))
+            a = add_text_to_image(a, f'SSIM: {ssims[i]:.2f}', position=(10, 90))
+            b = add_text_to_image(a, f'Timing: {timing[i]:.2f}', position=(10, 120))
+            c = add_text_to_image(b, f'{des[i]}', position=(10, 150))
             our_imgs_texts.append(c)
 
         # Concatenate images horizontally
-        combined_image = np.hstack([gt_img, down_img] + our_imgs_texts)
+        # combined_image = np.hstack([gt_img, down_img] + our_imgs_texts)
+        combined_image = np.hstack([gt_img] + our_imgs_texts)
 
         # Show the combined image
         if not skip:
@@ -191,6 +197,15 @@ if __name__ == "__main__":
 
     folder22 = "/home/simtech/Qiming/CuNeRF-mgpu/save_ngp/CuNeRFx2/case_00089_r=2"
     ds22 = "ngp r=2"
+    
+    
+    
+    
+    folder25 = "/home/simtech/Qiming/CuNeRF-mgpu/save_vanilla/CuNeRFx2/case_00010"
+    ds25 = "vanilla nerf"
+    
+    folder26 = "/home/simtech/Qiming/CuNeRF-mgpu/save_mgpu/CuNeRFx2/case_00010"
+    ds26 = "mgpu"
 
     case_00004 = [folder1, folder2, folder7, folder8, folder10]
     case_00004_des = [ds1, ds2, ds7, ds8, ds10]
@@ -210,6 +225,10 @@ if __name__ == "__main__":
     
     case_00010 = [folder20, folder18, folder19, folder23, folder24]
     case_00010_des = [ds20, ds18, ds19, ds23, ds24]
+
+    
+    case_00010_type = [folder25, folder26, folder23]
+    case_00010_type_des = [ds25, ds26, ds23]
     
     
     
@@ -226,6 +245,6 @@ if __name__ == "__main__":
     
     # compare_images(case_00052, case_00052_des)
 
-    compare_images(case_00010, case_00010_des) ## effect of radius
+    compare_images(case_00010_type, case_00010_type_des) ## effect of radius
 
     # compare_images(case_00089_radius, case_00089_radius_des) ## effect of radius

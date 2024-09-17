@@ -15,15 +15,63 @@ except ImportError:
 	print("============================================================")
 	sys.exit()
 
+# class NeRFMLP(base.baseModel):
+#     def __init__(self, **params):
+#         super(NeRFMLP, self).__init__(params)
+#         self.coords_MLP = nn.ModuleList(
+#             [nn.Linear(self.in_ch, self.netW), *[nn.Linear(self.netW + self.in_ch, self.netW) if i in self.skips else nn.Linear(self.netW, self.netW) for i in range(self.netD - 1)]]
+#         )
+#         for idx, mlp in enumerate(self.coords_MLP):
+#             if idx in self.skips:
+#                 mlp.requires_grad_(False)
+#         self.out_MLP = nn.Linear(self.netW, self.out_ch)
+
+#     def forward(self, x):
+#         x = self.embed(x)
+#         h = x
+#         for idx, mlp in enumerate(self.coords_MLP):
+#             h = torch.cat([x, h], -1) if idx in self.skips else F.relu(mlp(h)) 
+#         out = self.out_MLP(h)
+#         return out 
+
 class NeRFMLP(base.baseModel):
     def __init__(self, **params):
         super(NeRFMLP, self).__init__(params)
+        ## 9 layers. 
+        ## skipping 4th, 9th 
+        ## during construction, skip index the width is increased 
+        ## during forward pass, skip index is concatenation 
+        ## 
+        ## for below, same level is the same layer but different index during construction and forward pass
+        ## 
+        ## during contruction, during foward pass, 
+        ## 63 -> 256            0th 
+        ## 0th                  1th 
+        ## 1th                  2nd 
+        ## 2nd                  3rd 
+        ## 3rd                  4th concatenation, skipped
+        ## 4th wider input      5th 
+        ## 5th                  6th
+        ## 6th                  7th
+        ## 7th                  8th 
+        ## 8th                  9th concatenation, skipped
+        ## 9th wider input      10th
+        ## 256 -> 128
+        ## 128 -> 2 
+        
         self.coords_MLP = nn.ModuleList(
-            [nn.Linear(self.in_ch, self.netW), *[nn.Linear(self.netW + self.in_ch, self.netW) if i in self.skips else nn.Linear(self.netW, self.netW) for i in range(self.netD - 1)]]
+            [nn.Linear(self.in_ch, self.netW), *[nn.Linear(self.netW + self.in_ch, self.netW) if i in self.skips else nn.Linear(self.netW, self.netW) for i in range(self.netD-1+len(self.skips))]]
         )
+        ## skip the gradients of the skipped layers
         for idx, mlp in enumerate(self.coords_MLP):
             if idx in self.skips:
                 mlp.requires_grad_(False)
+        
+        ## 612738 parameters        
+        # self.preout_MLP = nn.Linear(self.netW, self.netW // 2)
+        # self.out_MLP = nn.Linear(self.netW // 2, self.out_ch)
+
+        ## 580098 parameters
         self.out_MLP = nn.Linear(self.netW, self.out_ch)
 
     def forward(self, x):
@@ -31,6 +79,8 @@ class NeRFMLP(base.baseModel):
         h = x
         for idx, mlp in enumerate(self.coords_MLP):
             h = torch.cat([x, h], -1) if idx in self.skips else F.relu(mlp(h)) 
+            
+        # h = F.relu(self.preout_MLP(h))
         out = self.out_MLP(h)
         return out 
 

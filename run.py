@@ -13,7 +13,7 @@ import random
 import numpy as np
 import os 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3" ## must be before import torch. 
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
