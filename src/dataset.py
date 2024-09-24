@@ -35,8 +35,10 @@ class Base(Dataset):
                 self.LEN = len(self.vals)
 
             else:
-                self.vals = list(range(self.len))
-                self.LEN = self.len
+                # self.vals = list(range(self.len))
+                # self.LEN = self.len
+                self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
+                self.LEN = len(self.vals)
             self.pad = self.radius * self.scale
 
         elif self.mode == 'test':

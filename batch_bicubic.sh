@@ -8,10 +8,10 @@ BICUBIC_SCRIPT="/home/simtech/Qiming/CuNeRF-mgpu/src/bicubic.py"
 
 # Number of evaluations and scale (you can modify these if needed)
 N_EVAL=0
-SCALE=2
+SCALE=4
 
 # Starting index for iteration (change this value to start from a different case)
-START_INDEX=95
+START_INDEX=0
 
 # Counter to keep track of the iteration
 counter=0

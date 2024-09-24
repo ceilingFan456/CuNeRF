@@ -22,7 +22,7 @@ def super_sampling_in_z(data, z_size=512):
     print (new_data)
     
     ## view as 3D for gathering 
-    new_data = new_data[..., None, None]
+    # new_data = new_data[..., None, None]
     new_data = new_data.expand(z_size, 512, 512)
     new_data = torch.gather(data, 0, new_data)
     return new_data

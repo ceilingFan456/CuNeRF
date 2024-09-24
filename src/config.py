@@ -271,7 +271,7 @@ class Cfg:
                 if k == 'psnr':
                     self.save_psnr = True
                 self.scores[k] = v
-                self.Save(k, iflog=False)
+                # self.Save(k, iflog=False)
             performs.append(f"{k} : {self.scores[k]}")
         performs = '[BEST] ' + reduce(lambda x1, x2 : x1 + ' | ' + x2, performs)
         self.log_file.write(f'{performs}\n')
