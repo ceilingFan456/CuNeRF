@@ -20,7 +20,7 @@ import torch
 from torch.utils.data import DataLoader
 from . import dataset, loss, metrics, rendering, sampling, models, importance
 from .utils import dfs_update_configs, clip_grad, lr_decay, merge_configs, mlt_process
-from .models import FullModel, NGPModel
+from .models import FullModel, NGPModel, VcubeModel
 
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import destroy_process_group
@@ -36,8 +36,12 @@ class Cfg:
         cfg = merge_configs(args, bcfg)
         self.cfg = cfg
         self.rank = rank
-        dfs_update_configs(cfg)
+        dfs_update_configs(cfg)        
         self.load_cfg(cfg)
+
+        ## store the config
+        with open(os.path.join(self.save_path, 'config.yaml'), 'w') as yf:
+            yaml.safe_dump(cfg, yf, indent=4)
 
         if self.resume or self.mode in ['eval', 'test']: 
             self.Resume()
@@ -72,6 +76,7 @@ class Cfg:
             setattr(self, f'{mode}set', getattr(dataset, name)(mode=mode, **cfg[mode]))
             if mode == 'train':
                 self.evalset = getattr(dataset, name)(mode='eval', **cfg['eval'])
+                self.trainevalset = getattr(dataset, name)(mode='traineval', **cfg['traineval'])
 
         def load_dataloader(self, cfg):
             mode = cfg.pop('mode')
@@ -84,6 +89,7 @@ class Cfg:
 
             if mode == 'train':
                 self.evalloader = DataLoader(self.evalset, **cfg['eval'])
+                self.trainevalloader = DataLoader(self.trainevalset, **cfg['traineval'])
 
         def load_metrics(self, cfg):
             self.metrics = metrics.Metrics(cfg)
@@ -118,6 +124,13 @@ class Cfg:
                 self.fullmodel = NGPModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
             else:
                 model = NGPModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+                self.fullmodel = DDP(model, device_ids=[self.rank])
+
+        def load_vcubemodel(self, cfg):
+            if not self.cfg["multi_gpu"]:
+                self.fullmodel = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+            else:
+                model = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
                 self.fullmodel = DDP(model, device_ids=[self.rank])
             
             
@@ -244,10 +257,10 @@ class Cfg:
             video_path = os.path.join(result_dir, 'result.mp4')
             os.system(f'ffmpeg -i {result_dir}/%0{d}d.png -pix_fmt yuv422p -vcodec libx264 -vsync 0 {video_path} -y')
 
-    def Save_map(self, pds, gts=None):
+    def Save_map(self, pds, gts=None, flag='eval'):
 
         # names = self.evalset.get_names()
-        result_path = os.path.join(self.result_path, 'eval')
+        result_path = os.path.join(self.result_path, flag)
         os.makedirs(result_path, exist_ok=True)
         sitk.WriteImage(sitk.GetImageFromArray(pds), os.path.join(result_path, 'ours.nii.gz'))
         for sufix, maps in {'ours' : pds, 'gt' : gts}.items():
@@ -303,13 +316,16 @@ class Cfg:
         out = self.render_fn(raw, **ans)
         return out['rgb'], out0['rgb']
     
-    def evaluation(self, pds):
-        gts = self.evalset.getLabel()
+    def evaluation(self, pds, flag="eval"):
+        if flag == 'eval':
+            gts = self.evalset.getLabel()
+        elif flag == 'traineval':
+            gts = self.trainevalset.getLabel()
 
         with torch.no_grad():
             scores = self.metrics.evaluation(pds, gts)
             scores_txt = reduce(lambda x1, x2 : x1 + ' | ' + x2, [f'{k.upper()} : {v}' for k, v in scores.items()])
-            logs = f'[EVAL] {scores_txt}'
+            logs = f'[EVAL] {scores_txt}' if flag == 'eval' else f'[TRNEVAL] {scores_txt}'
             if self.mode == 'train':
                 self.log_file.write(f'{logs}\n')
                 self.Update_score(scores)
@@ -317,7 +333,7 @@ class Cfg:
 
             if self.save_map:
                 if (self.mode == 'train' and self.save_psnr) or self.mode != 'train':
-                    self.Save_map(pds, gts)
+                    self.Save_map(pds, gts, flag)
 
         print(logs)
 

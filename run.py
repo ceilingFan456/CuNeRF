@@ -12,8 +12,8 @@ import math
 import random
 import numpy as np
 import os 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2,3" ## must be before import torch. 
+# # os.environ["CUDA_VISIBLE_DEVICES"] = "2" ## must be before import torch. 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,3" ## must be before import torch. 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
@@ -94,6 +94,7 @@ def train(cfg):
                     cfg.Update(loss, rgb.cpu().numpy(), gts.cpu().numpy())
                     if cfg.i_step % cfg.log_iter == 0: cfg.Log()
                     if cfg.i_step % cfg.save_iter == 0: cfg.Save()
+                    if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg)
                     if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
                 
                 cfg.pbar.update(1)
@@ -142,6 +143,41 @@ def eval(cfg):
 
         cfg.evaluation(pds)
 
+def traineval(cfg):
+    N, W, H, S = cfg.trainevalset.__len__(), cfg.trainevalset.W, cfg.trainevalset.H, cfg.bs_eval
+    W, H = W//cfg.scale, H//cfg.scale
+    print(f"traineval N: {N}, W: {W}, H: {H}, S: {S}")
+    pds = np.zeros((N, W * H))
+    dataloader = tqdm(cfg.trainevalloader)
+    start_time = time.time()
+    with torch.no_grad():
+        for idx, batch in enumerate(dataloader):
+            dataloader.set_description(f'[TRNEVAL] : {idx}')
+            coords, depths = batch
+            # coords = coords.squeeze(0)
+            # for cidx in range(math.ceil(W * H / S)):
+            #     select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
+            #     rgb, _ = cfg.Render(select_coords, depths, is_train=False)
+            #     pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
+            # assert S * (cidx + 1) >= H * W
+            
+            for cidx in range(math.ceil(W * H / S)):
+                l = S * cidx
+                r = min(S * (cidx + 1), W*H)
+                chunk = coords[:, l:r]
+                # rgb, _ = cfg.fullmodel.module.eval_forward((chunk, depths,))
+                rgb, _ = cfg.fullmodel((chunk, depths,))
+                s = idx * coords.shape[0]
+                e = min((idx + 1) * coords.shape[0], N)
+                pds[s:e, l:r] = rgb.cpu().numpy()
+
+        pds = pds.reshape(N, W, H)
+        
+        end_time = time.time()
+        elapsed_time = (end_time - start_time) / len(dataloader)
+        cfg.timing_file.write(f'{elapsed_time:.4f}\n')
+        cfg.evaluation(pds, "traineval")
+        
 def test(cfg):
     N, W, H, S = cfg.testset.__len__(), int(cfg.cam_scale * cfg.testset.W), int(cfg.cam_scale * cfg.testset.H), cfg.bs_test
     pds = np.zeros((N, H * W))

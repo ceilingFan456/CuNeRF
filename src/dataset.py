@@ -19,7 +19,7 @@ class Base(Dataset):
             setattr(self, key, value)
 
     def __getitem__(self, index):
-        return self.single_view_sampling(index) if self.mode in ['train', 'eval'] else self.arbitrary_sampling(index)
+        return self.single_view_sampling(index) if self.mode in ['train', 'eval', 'traineval'] else self.arbitrary_sampling(index)
 
     def __len__(self):
         return self.LEN
@@ -29,7 +29,7 @@ class Base(Dataset):
             self.LEN = self.len
             self.pad = self.radius * self.scale
 
-        elif self.mode == 'eval':
+        elif self.mode == 'eval' or self.mode== 'traineval':
             if self.N_eval is not None:
                 self.vals = [int(i * (self.len - 1) / (self.N_eval - 1)) for i in range(self.N_eval)]
                 self.LEN = len(self.vals)
@@ -37,7 +37,10 @@ class Base(Dataset):
             else:
                 # self.vals = list(range(self.len))
                 # self.LEN = self.len
-                self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
+                if self.mode == 'eval':
+                    self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
+                elif self.mode == 'traineval':
+                    self.vals = list(filter(lambda x: x % self.scale == 0, range(self.len)))
                 self.LEN = len(self.vals)
             self.pad = self.radius * self.scale
 
@@ -72,7 +75,13 @@ class Base(Dataset):
             xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
             if xy_inds.shape[0] > self.bsize:
                 xy_inds = xy_inds[np.random.choice(xy_inds.shape[0], size=[self.bsize], replace=False)]
+                
+        elif self.mode == 'traineval':
+            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+            z_ind = self.vals[index]
 
+            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+            
         else:
             xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
             xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
@@ -156,6 +165,12 @@ class Medical3D(Base):
         return (data - data.min()) / (data.max() - data.min())
 
     def getLabel(self):
+        if self.mode == "traineval":
+            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+            vals_expanded = torch.tensor(self.vals)[:, None]
+            data = self.data[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
+            return data.reshape(len(self.vals), self.H // self.scale, self.W // self.scale).cpu().numpy()
         return self.data[self.vals].cpu().numpy()
 
     ## super sampling in z direction to get 512 x 512 x 512

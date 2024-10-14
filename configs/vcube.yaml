@@ -13,16 +13,16 @@ lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
 
-z_scaler : 4
+z_scaler : 1
 normalise_to_512: True
 
 
 # modeling
-stype     : cube
+stype     : cube ## dummy value
 radius    : 0.5
 n_samples : 64
 n_imps    : 64
-mtype     : NGPMLP
+mtype     : VcubeMLP
 
 # test
 zpos      : [0]
@@ -33,9 +33,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_ngp_512
-save_path   : save_ngp_512
-log_path    : save_ngp_512
+result_path : save-vcube
+save_path   : save-vcube
+log_path    : save-vcube
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -58,6 +58,8 @@ model:
   n_input_dims: 3
   n_output_dims: 2
 
+  n_samples: $n_samples
+
   encoding:
     otype: HashGrid
     n_levels: 16 ## level of hierachies 
@@ -67,7 +69,14 @@ model:
     per_level_scale: 1.5
   
   ## fast small mlp with tinycudann
-  network:
+  colour_network:
+    otype: FullyFusedMLP
+    activation: ReLU
+    output_activation: None
+    n_neurons: 64
+    n_hidden_layers: 4
+
+  size_network:
     otype: FullyFusedMLP
     activation: ReLU
     output_activation: None
@@ -160,5 +169,5 @@ clip_grad :
   max_val  : 0.1
   max_norm : 0.1
 
-ngpmodel:
+vcubemodel:
   dummy: True

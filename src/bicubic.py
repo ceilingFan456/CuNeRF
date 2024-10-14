@@ -62,8 +62,9 @@ def nomalize(data):
     return (data - data.min()) / (data.max() - data.min())
 
 def calculate_metrics(current_frame, previous_frame):
-    psnr_value = peak_signal_noise_ratio(previous_frame, current_frame)
-    ssim_value = structural_similarity(previous_frame, current_frame, data_range=current_frame.max() - current_frame.min())
+    psnr_value = peak_signal_noise_ratio(previous_frame, current_frame, data_range=1)
+    # ssim_value = structural_similarity(previous_frame, current_frame, data_range=current_frame.max() - current_frame.min())
+    ssim_value = structural_similarity(current_frame, previous_frame, win_size=11, data_range=1, channel_axis=0)
     return psnr_value, ssim_value
 
 def visualize(data, n_eval, scale):
@@ -113,7 +114,23 @@ def visualize(data, n_eval, scale):
     
 
 def downsample(data, scale):
-    return data[::scale, ::scale, ::scale]
+    # return data[::scale, ::scale, ::scale]
+
+    H, W = data.shape[1], data.shape[2]
+    xy_inds = torch.meshgrid(torch.linspace(0, H - 1, H // scale), torch.linspace(0, W - 1, W // scale))
+    xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+    
+    a = torch.linspace(0, H - 1, H // scale).long()
+    b = torch.linspace(0, H - scale, H // scale).long()
+    print(a)
+    print(b)
+    print(a == b)
+    
+    vals = list(filter(lambda x: x %scale == 0, range(data.shape[0])))
+    vals_expanded = torch.tensor(vals)[:, None]
+    data = data[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
+    data = data.reshape(len(vals), H // scale, W // scale)
+    return data
 
 
 def bicubic_gt(data, scale):
@@ -213,14 +230,17 @@ def save(gt, pd, save_path, scale):
     for i in range(n):
         img_gt = gt[i]
         img = pd[i]
-        img = np.uint8(img*255.)
         
+        img_gt_01 = img_gt
+        img_01 = img
+        
+        img = np.uint8(img*255.)
         img_gt = np.uint8(img_gt*255.)
         
         cv2.imwrite(os.path.join(save_path, "eval", f'{str(i).zfill(len(str(n)))}_gt.png'), img_gt)
         cv2.imwrite(os.path.join(save_path, "eval", f'{str(i).zfill(len(str(n)))}_ours.png'), img)
         
-        psnr_value, ssim_value = calculate_metrics(img, img_gt)
+        psnr_value, ssim_value = calculate_metrics(img_01, img_gt_01)
         psnrs.append(psnr_value)
         ssims.append(ssim_value)
         
@@ -241,6 +261,7 @@ def save(gt, pd, save_path, scale):
         
     print(f"Images saved at {save_path}")
 
+
 def main(args):
     filepath = os.path.join("/home/simtech/Qiming/kits19/data/", args.case,'imaging.nii.gz')
     print("Loading data from", filepath)
@@ -249,21 +270,56 @@ def main(args):
     
     down = downsample(data, args.scale)
     mine = bicubic(down, args.scale)
-    ref = bicubic_gt(down, args.scale)
+    # ref = bicubic_gt(down, args.scale)
 
     # visualize(mine, args.n_eval, args.scale)
 
-    save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/save_bicubic-512/CuNeRFx{args.scale}", args.case)
+    save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/{args.save_folder}/CuNeRFx{args.scale}", args.case)
     save(data.cpu().numpy(), mine.cpu().numpy(), save_path, args.scale)
     
-    # save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/save_2D_bicubic/CuNeRFx{args.scale}", args.case)
-    # save(data.cpu().numpy(), ref, save_path)
+    # # save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/save_2D_bicubic/CuNeRFx{args.scale}", args.case)
+    # # save(data.cpu().numpy(), ref, save_path)
 
+    # ## double check the bicubic interpolation by comparing gt even correct index before downsampling. 
+    # save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/{args.save_folder}/CuNeRFx{args.scale}", args.case)
+    # gt = data.clone()
+    # vals = list(filter(lambda x: x % args.scale == 0, range(data.shape[0])))
+    # vals_expanded = torch.tensor(vals)[:, None]
+    # H, W = 512, 512
+    # xy_inds = torch.meshgrid(torch.linspace(0, H - 1, H // args.scale), torch.linspace(0, W - 1, W // args.scale))
+    # xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+    
+    # a = torch.meshgrid(torch.linspace(0, H - args.scale, H // args.scale), torch.linspace(0, W - args.scale, W // args.scale))
+    # a = torch.stack(a, -1).reshape([-1, 2]).long()
+    # gt[vals_expanded, a[:, 0], a[:, 1]] = gt[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
+    
+    # save(gt.cpu().numpy(), mine.cpu().numpy(), save_path, args.scale)
+    
+    # ## shift things around 
+    # save_path = os.path.join(f"/home/simtech/Qiming/CuNeRF-mgpu/{args.save_folder}/CuNeRFx{args.scale}", args.case)
+    # gt = data.clone()
+    # vals = list(filter(lambda x: x % args.scale == 0, range(data.shape[0])))
+    # vals_expanded = torch.tensor(vals)[:, None]
+    # H, W = 512, 512
+    # a = torch.linspace(0, H - 1, H // args.scale)[..., None].long()
+    # b = torch.stack([a, a+1, a+2, a+3], -1).clamp(0, H-1).reshape(-1)
+    # print(b)
+    # xy_inds = torch.meshgrid(b, b)
+    # xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+    # print(gt[vals_expanded, torch.linspace(0, H-1, H).long(), torch.linspace(0, W-1, W).long()].shape)
+    # print(gt[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]].shape)
+    # xy = torch.meshgrid(torch.linspace(0, H-1, H).long(), torch.linspace(0, W-1, W).long())
+    # xy = torch.stack(xy, -1).reshape([-1, 2]).long()
+    # # gt[vals_expanded,xy[:, 0], xy[:, 1]] = gt[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
+    # gt[:, xy[:, 0], xy[:, 1]] = gt[:, xy_inds[:, 0], xy_inds[:, 1]]
+    # save(gt.cpu().numpy(), mine.cpu().numpy(), save_path, args.scale)
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", type=str, default="case_00000")
     parser.add_argument("--n_eval", type=int, default=50)
     parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--save_folder", type=str, default="save_bicubic-512-tmp")
     args = parser.parse_args()
     
     torch.set_default_tensor_type('torch.cuda.FloatTensor')

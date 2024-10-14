@@ -13,13 +13,13 @@ lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
 
-z_scaler : 4
+z_scaler : 1
 normalise_to_512: True
 
 
 # modeling
 stype     : cube
-radius    : 0.5
+radius    : 2
 n_samples : 64
 n_imps    : 64
 mtype     : NGPMLP
@@ -33,9 +33,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_ngp_512
-save_path   : save_ngp_512
-log_path    : save_ngp_512
+result_path : ngp-r2
+save_path   : ngp-r2
+log_path    : ngp-r2
 
 loss : 
   name : MSE_LOSS_REGULARISATION

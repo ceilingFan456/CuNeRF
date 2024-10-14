@@ -173,3 +173,111 @@ class FullModel(torch.nn.Module):
         raw = self.fine(ans['pts'])
         out = self.render_fn(raw, **ans)
         return out['rgb'], out0['rgb']
+
+
+class VcubeMLP(torch.nn.Module):
+    def __init__(self, **params):
+        super(VcubeMLP, self).__init__()
+        for k, v in params.items():
+            setattr(self, k, v)
+        # self.model = tcnn.NetworkWithInputEncoding(n_input_dims=self.n_input_dims, 
+        #                                            n_output_dims=self.n_output_dims, 
+        #                                            encoding_config=self.encoding, 
+        #                                            network_config=self.network,
+        #                                            )
+
+        self.encoding = tcnn.Encoding(n_input_dims=self.n_input_dims, encoding_config=self.encoding)
+        self.colourNetwork = tcnn.Network(n_input_dims=self.encoding.n_output_dims, n_output_dims=self.n_output_dims, network_config=self.colour_network)
+        self.sizeNetwork = tcnn.Network(n_input_dims=self.encoding.n_output_dims, n_output_dims=3, network_config=self.size_network)
+        self.colourModel = torch.nn.Sequential(self.encoding, self.colourNetwork)
+        self.sizeModel = torch.nn.Sequential(self.encoding, self.sizeNetwork)
+ 
+    def forward(self, x):
+        shape = x.shape
+        x = x.reshape(-1, self.n_input_dims)
+        y = self.colourModel(x)
+        y = y.reshape(*shape[:-1], self.n_output_dims)
+        return y
+
+    def forward_size(self, x):
+        shape = x.shape
+        x = x.reshape(-1, self.n_input_dims)
+        y = self.sizeModel(x)
+        y = y.reshape(*shape[:-1], 3)
+        return y
+    
+    def network_parameters(self):
+        return list(self.colourNetwork.parameters())[0] + list(self.sizeNetwork.parameters())[0]
+
+
+class VcubeModel(torch.nn.Module):
+    def __init__(self, coarse, fine, sample_fn, render_fn, imp_fn):
+        super(VcubeModel, self).__init__()
+        print("Using VcubeModel")
+        self.coarse = coarse
+        self.render_fn = render_fn
+        self.n_samples = coarse.n_samples
+
+    def forward(self, x):
+        coords, depths = x
+        # coords = coords.squeeze(0)
+        coords = coords / (2*math.pi) + 0.5
+        depths = depths / (2*math.pi) + 0.5
+        
+        return self.Render(coords, depths, is_train=True)
+
+    def eval_forward(self, x):
+        coords, depths = x        
+        coords = coords / (2*math.pi) + 0.5
+        depths = depths / (2*math.pi) + 0.5
+        return self.Render(coords, depths, is_train=False)
+    
+    def Render(self, coord_batch, depths, is_train=False, R=None):
+        ans0 = self.sampling(coord_batch, depths, is_train=is_train, R=R)
+        raw0 = self.coarse(ans0['pts'])
+        out0 = self.render_fn(raw0, **ans0)
+        
+        # ans = self.imp_fn(**ans0, **out0, is_train=is_train)
+        # raw = self.fine(ans['pts'])
+        # out = self.render_fn(raw, **ans)
+
+        # out0['rgb'] = out0['rgb'].clamp(0.0, 1.0)
+        return out0['rgb'], list(self.coarse.network_parameters())[0]
+    
+    def sampling(self, batch, depths, is_train=False, R=None):
+        ## batch comes in size [B, b, 7]
+        B = batch.shape[0]
+        n_cnts = batch.shape[1]
+        (cnts, LR, TB), (near, far) = torch.split(batch, [3, 2, 2], dim=-1), torch.split(depths, [1, 1], dim=-1)
+
+        steps = round(math.pow(self.n_samples, 1./3) + 1)
+        t_vals = torch.cat([v[...,None] for v in torch.meshgrid(torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps))], -1)
+        t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
+
+        dxdydz = self.coarse.forward_size(cnts)
+        dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
+        cx, cy, cz = torch.split(cnts, [1,1,1], dim=-1)
+
+        ## to get the range for sampling 
+        x_l, x_r = cx - dx, cx + dx
+        y_l, y_r = cy - dy, cy + dy
+        z_l, z_r = cz - dz, cz + dz
+
+        if is_train:
+            x_vals = x_l + t_vals[:, 0] * (x_r - x_l) * torch.rand(B, n_cnts, self.n_samples) - t_vals[:, 0] / 2 * (x_r - x_l)
+            y_vals = y_l + t_vals[:, 1] * (y_r - y_l) * torch.rand(B, n_cnts, self.n_samples) - t_vals[:, 0] / 2 * (y_r - y_l)
+            z_vals = z_l + t_vals[:, 2] * (z_r - z_l) * torch.rand(B, n_cnts, self.n_samples) - t_vals[:, 0] / 2 * (z_r - z_l)
+                
+        else:
+            # print("Using is_train=False")
+            x_vals = x_l + t_vals[:, 0] * (x_r - x_l) - t_vals[:, 0] / 2 * (x_r - x_l)
+            y_vals = y_l + t_vals[:, 1] * (y_r - y_l) - t_vals[:, 0] / 2 * (y_r - y_l)
+            z_vals = z_l + t_vals[:, 2] * (z_r - z_l) - t_vals[:, 0] / 2 * (z_r - z_l)
+
+        pts = torch.cat([x_vals[..., None], y_vals[..., None], z_vals[..., None]], -1)
+        if R is not None:
+            pts, cnts = pts @ R, cnts @ R
+
+        ## TODO
+        ## change dx, dy, dz dim
+        return {'pts' : pts, 'cnts' : cnts, 'dx' : dx, 'dy' : dy, 'dz' : dz}

@@ -1,8 +1,8 @@
 # example config for CuNeRF
 
 # training
-max_iter : 40000 ## double gpu
-eval_iter: 20000
+max_iter : 100000 ## double gpu
+eval_iter: 50000
 save_iter: 10000
 log_iter : 100
 bs_train : 2048 # batch size 
@@ -32,9 +32,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vanilla-512
-save_path   : save-vanilla-512
-log_path    : save-vanilla-512
+result_path : save-vanilla-512-256-long-2
+save_path   : save-vanilla-512-256-long-2
+log_path    : save-vanilla-512-256-long-2
 
 loss : 
   name : Adaptive_MSE_LOSS
@@ -84,6 +84,16 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
 
+  traineval :
+    file    : $file
+    scale   : $scale
+    radius  : $radius
+    N_eval  : $N_eval
+    bsize   : $bs_eval
+    modality: $modality 
+    z_scaler: $z_scaler
+    normalise_to_512: $normalise_to_512
+
   test :
     file      : $file
     scales    : $scales
@@ -101,6 +111,10 @@ dataloader :
     shuffle : True
   
   eval:
+    batch_size : 1
+    shuffle : False
+
+  traineval:
     batch_size : 1
     shuffle : False
 
