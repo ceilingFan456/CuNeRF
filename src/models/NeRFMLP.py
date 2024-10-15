@@ -203,11 +203,13 @@ class VcubeMLP(torch.nn.Module):
         shape = x.shape
         x = x.reshape(-1, self.n_input_dims)
         y = self.sizeModel(x)
+        y = F.sigmoid(y)
         y = y.reshape(*shape[:-1], 3)
         return y
     
     def network_parameters(self):
-        return list(self.colourNetwork.parameters())[0] + list(self.sizeNetwork.parameters())[0]
+        # return list(self.colourNetwork.parameters())
+        return list(self.colourNetwork.parameters()) + list(self.sizeNetwork.parameters())
 
 
 class VcubeModel(torch.nn.Module):
@@ -244,6 +246,8 @@ class VcubeModel(torch.nn.Module):
         # out0['rgb'] = out0['rgb'].clamp(0.0, 1.0)
         return out0['rgb'], list(self.coarse.network_parameters())[0]
     
+    
+## default cube size is 0.0019
     def sampling(self, batch, depths, is_train=False, R=None):
         ## batch comes in size [B, b, 7]
         B = batch.shape[0]
@@ -255,6 +259,7 @@ class VcubeModel(torch.nn.Module):
         t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
 
         dxdydz = self.coarse.forward_size(cnts)
+        print(dxdydz)
         dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
         cx, cy, cz = torch.split(cnts, [1,1,1], dim=-1)
 
@@ -262,6 +267,20 @@ class VcubeModel(torch.nn.Module):
         x_l, x_r = cx - dx, cx + dx
         y_l, y_r = cy - dy, cy + dy
         z_l, z_r = cz - dz, cz + dz
+
+        
+        # left, right = torch.split(LR, [1, 1], dim=-1) ## (B, b, 1)
+        # top, bottom = torch.split(TB, [1, 1], dim=-1)
+        # steps = round(math.pow(self.n_samples, 1./3) + 1)
+        # t_vals = torch.cat([v[...,None] for v in torch.meshgrid(torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps))], -1)
+        # t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
+
+        # x_l, x_r = left.expand([B, n_cnts, self.n_samples]), right.expand([B, n_cnts, self.n_samples])
+        # y_l, y_r = top.expand([B, n_cnts, self.n_samples]), bottom.expand([B, n_cnts, self.n_samples])
+        # # z_l = torch.full_like(x_l, 1.).view(-1, n_samples) * near[:, None]
+        # # z_r = torch.full_like(x_r, 1.).view(-1, n_samples) * far[:, None]
+        # z_l = near[:, None].expand([B, n_cnts, self.n_samples])
+        # z_r = far[:, None].expand([B, n_cnts, self.n_samples])
 
         if is_train:
             x_vals = x_l + t_vals[:, 0] * (x_r - x_l) * torch.rand(B, n_cnts, self.n_samples) - t_vals[:, 0] / 2 * (x_r - x_l)
@@ -281,3 +300,6 @@ class VcubeModel(torch.nn.Module):
         ## TODO
         ## change dx, dy, dz dim
         return {'pts' : pts, 'cnts' : cnts, 'dx' : dx, 'dy' : dy, 'dz' : dz}
+        
+        # print({'dx' : (x_r - x_l).mean() / 2, 'dy' : (y_r - y_l).mean() / 2, 'dz' : (z_r - z_l).mean() / 2})
+        # return {'pts' : pts, 'cnts' : cnts, 'dx' : (x_r - x_l).mean() / 2, 'dy' : (y_r - y_l).mean() / 2, 'dz' : (z_r - z_l).mean() / 2}
