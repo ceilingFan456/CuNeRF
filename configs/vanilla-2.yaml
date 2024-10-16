@@ -15,6 +15,7 @@ workers  : 4
 
 z_scaler : 1
 normalise_to_512: True
+always_save: True
 
 # modeling
 stype     : cube

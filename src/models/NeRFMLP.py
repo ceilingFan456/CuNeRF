@@ -191,6 +191,9 @@ class VcubeMLP(torch.nn.Module):
         self.sizeNetwork = tcnn.Network(n_input_dims=self.encoding.n_output_dims, n_output_dims=3, network_config=self.size_network)
         self.colourModel = torch.nn.Sequential(self.encoding, self.colourNetwork)
         self.sizeModel = torch.nn.Sequential(self.encoding, self.sizeNetwork)
+
+        self.freeze_encoding()
+        self.freeze_colourNetwork()
  
     def forward(self, x):
         shape = x.shape
@@ -203,7 +206,8 @@ class VcubeMLP(torch.nn.Module):
         shape = x.shape
         x = x.reshape(-1, self.n_input_dims)
         y = self.sizeModel(x)
-        y = F.sigmoid(y)
+        # y = F.sigmoid(y)
+        # y = F.relu(y) + 0.0001
         y = y.reshape(*shape[:-1], 3)
         return y
     
@@ -256,6 +260,15 @@ class VcubeModel(torch.nn.Module):
         self.render_fn = render_fn
         self.n_samples = coarse.n_samples
 
+        methods = {"size": self.sampling_with_size, "scale": self.sampling_with_scale}
+        self.sampling = methods[coarse.size_network_method]
+
+        ## for alternating training
+        self.training_modes = coarse.training_modes
+        self.training_mode_max_iters = coarse.training_mode_max_iters
+        self.training_mode_idx = 0
+        self.cnt = 0
+
     def forward(self, x):
         coords, depths = x
         # coords = coords.squeeze(0)
@@ -271,7 +284,7 @@ class VcubeModel(torch.nn.Module):
         return self.Render(coords, depths, is_train=False)
     
     def Render(self, coord_batch, depths, is_train=False, R=None):
-        ans0 = self.sampling_with_size(coord_batch, depths, is_train=is_train, R=R)
+        ans0 = self.sampling(coord_batch, depths, is_train=is_train, R=R)
         raw0 = self.coarse(ans0['pts'])
         out0 = self.render_fn(raw0, **ans0)
         
@@ -293,7 +306,8 @@ class VcubeModel(torch.nn.Module):
         t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
 
         dxdydz = self.coarse.forward_size(cnts)
-        print(dxdydz)
+        dxdydz = F.sigmoid(dxdydz)
+        # print(dxdydz)
         dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
         cx, cy, cz = torch.split(cnts, [1,1,1], dim=-1)
 
@@ -355,6 +369,9 @@ class VcubeModel(torch.nn.Module):
         f = far[:, None].expand([B, n_cnts, self.n_samples])
 
         sxsysz = self.coarse.forward_size(cnts)
+        sxsysz = F.relu(sxsysz) + 0.001 ## activation function
+
+        # print(sxsysz)
         sx, sy, sz = torch.split(sxsysz, [1,1,1], dim=-1)
         cx, cy, cz = torch.split(cnts, [1,1,1], dim=-1)
 
@@ -385,3 +402,25 @@ class VcubeModel(torch.nn.Module):
         ## TODO
         ## change dx, dy, dz dim
         return {'pts' : pts, 'cnts' : cnts, 'dx' : dx, 'dy' : dy, 'dz' : dz}
+    
+    def alternating_training(self, idx):
+        training_mode = self.training_modes[self.training_mode_idx]
+
+        if self.cnt == 0:
+            if training_mode == "colour":
+                print("Training colour and encoding")
+                self.coarse.unfreeze_all()
+                self.coarse.freeze_sizeNetwork()
+            elif training_mode == "size":
+                print("Training size")
+                self.coarse.unfreeze_all()
+                self.coarse.freeze_colourNetwork()
+                self.coarse.freeze_encoding()
+
+        self.cnt += 1
+
+        cur_max_iter = self.training_mode_max_iters[self.training_mode_idx]
+        if self.cnt == cur_max_iter:
+            self.cnt = 0
+            self.training_mode_idx = (self.training_mode_idx + 1) % len(self.training_modes)
+    

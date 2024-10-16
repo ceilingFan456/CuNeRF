@@ -2,7 +2,7 @@
 
 # training
 max_iter : 40000 ##200000
-eval_iter: 40000
+eval_iter: 20000
 save_iter: 10000
 log_iter : 100
 bs_train : 1024  # batch size 
@@ -16,12 +16,13 @@ workers  : 4
 z_scaler : 1
 normalise_to_512: True
 always_save: True
+save_async: True
 alternating_training: False
 
 
 # modeling
 stype     : cube
-radius    : 0.5
+radius    : 1
 n_samples : 64
 n_imps    : 64
 mtype     : NGPMLP
@@ -35,9 +36,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : ngp-r05
-save_path   : ngp-r05
-log_path    : ngp-r05
+result_path : ngp-r1
+save_path   : ngp-r1
+log_path    : ngp-r1
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -54,7 +55,7 @@ importance :
   n_samples : $n_imps
 
 
-model: ## actually MLP object
+model:
   name: $mtype
 
   n_input_dims: 3

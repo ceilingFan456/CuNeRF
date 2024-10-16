@@ -2,19 +2,20 @@
 
 # training
 max_iter : 40000 ##200000
-eval_iter: 20000
-save_iter: 10000
+eval_iter: 2
+save_iter: 100000
 log_iter : 100
 bs_train : 1024  # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
-N_eval   : 
+N_eval   : 5
 lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
 
 z_scaler : 4
 normalise_to_512: True
+always_save: True
 
 
 # modeling
@@ -33,9 +34,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save_ngp_512
-save_path   : save_ngp_512
-log_path    : save_ngp_512
+result_path : save
+save_path   : save
+log_path    : save
 
 loss : 
   name : MSE_LOSS_REGULARISATION

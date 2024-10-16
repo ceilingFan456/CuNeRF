@@ -64,6 +64,15 @@ def argParse():
 def train(cfg):
     while cfg.i_step <= cfg.max_iter:
         for batch in cfg.trainloader:
+
+            ## freeze network for training.
+            if cfg.alternating_training:
+                if cfg.multi_gpu:
+                    cfg.fullmodel.module.alternating_training(cfg.i_step)
+                else:
+                    cfg.fullmodel.alternating_training(cfg.i_step)
+
+            ## training pipeline.
             cfg.optim.zero_grad()
             gts, coords, depths = batch
             # gts, coords = gts.squeeze(0), coords.squeeze(0)
@@ -94,8 +103,12 @@ def train(cfg):
                     cfg.Update(loss, rgb.cpu().numpy(), gts.cpu().numpy())
                     if cfg.i_step % cfg.log_iter == 0: cfg.Log()
                     if cfg.i_step % cfg.save_iter == 0: cfg.Save()
-                    if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg)
-                    if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg)
+               
+            ## always execute the following code, but non-major ranks do not save.     
+            with torch.no_grad():
+                to_save = not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0)
+                if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg, to_save=to_save)
+                if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg, to_save=to_save)
                 
                 cfg.pbar.update(1)
 
@@ -103,11 +116,12 @@ def train(cfg):
             if (cfg.i_step > cfg.max_iter) or (cfg.resume and cfg.i_step == cfg.max_iter): 
                 print(f"[GPU{cfg.rank}]Exiting...")
                 return
+        
             cfg.i_step += 1
                 
                 
 
-def eval(cfg):
+def eval(cfg, to_save=True):
     N, W, H, S = cfg.evalset.__len__(), cfg.evalset.W, cfg.evalset.H, cfg.bs_eval
     pds = np.zeros((N, W * H))
     dataloader = tqdm(cfg.evalloader)
@@ -136,14 +150,15 @@ def eval(cfg):
 
         pds = pds.reshape(N, W, H)
         
+        if to_save: 
         ## log timing
-        end_time = time.time()
-        elapsed_time = (end_time - start_time) / len(dataloader)
-        cfg.timing_file.write(f"{elapsed_time}\n")
+            end_time = time.time()
+            elapsed_time = (end_time - start_time) / len(dataloader)
+            cfg.timing_file.write(f"{elapsed_time}\n")
 
-        cfg.evaluation(pds)
+            cfg.evaluation(pds)
 
-def traineval(cfg):
+def traineval(cfg, to_save=True):
     N, W, H, S = cfg.trainevalset.__len__(), cfg.trainevalset.W, cfg.trainevalset.H, cfg.bs_eval
     W, H = W//cfg.scale, H//cfg.scale
     print(f"traineval N: {N}, W: {W}, H: {H}, S: {S}")
@@ -173,10 +188,11 @@ def traineval(cfg):
 
         pds = pds.reshape(N, W, H)
         
-        end_time = time.time()
-        elapsed_time = (end_time - start_time) / len(dataloader)
-        cfg.timing_file.write(f'{elapsed_time:.4f}\n')
-        cfg.evaluation(pds, "traineval")
+        if to_save:
+            end_time = time.time()
+            elapsed_time = (end_time - start_time) / len(dataloader)
+            cfg.timing_file.write(f'{elapsed_time:.4f}\n')
+            cfg.evaluation(pds, "traineval")
         
 def test(cfg):
     N, W, H, S = cfg.testset.__len__(), int(cfg.cam_scale * cfg.testset.W), int(cfg.cam_scale * cfg.testset.H), cfg.bs_test

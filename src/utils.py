@@ -10,6 +10,10 @@ import numpy as np
 
 import torch
 from torch.utils.cpp_extension import load
+from datetime import datetime
+
+# import asyncio
+# import aiofiles
 
 def dfs_update_configs(cfg):
     q = queue.Queue()
@@ -64,6 +68,9 @@ def lr_decay(step, self, lr_init, lr_final, max_iter, lr_delay_steps=0, lr_delay
     return new_lr
 
 def mlt_process(rets, const_params, params, function, num_workers=8, is_tqdm=False):
+    print("starting mlt_process}")
+    s = datetime.now()
+
     q = queue.Queue(num_workers)
     for idx, param in enumerate(tqdm(params) if is_tqdm else params):
         if num_workers > 0:
@@ -80,7 +87,10 @@ def mlt_process(rets, const_params, params, function, num_workers=8, is_tqdm=Fal
     while not q.empty():
         t = q.get()
         t.join()
-    
+
+    e = datetime.now()
+    print(f"Time: {e - s}")
+    print("end mlt_process")    
     return rets
 
 def get_rotate_matrix(axi, a):
@@ -102,3 +112,39 @@ def judge_range(coords, R):
     C, _, _ = torch.split(coords, [3, 2, 2], dim=-1)
     _C = C @ R
     return torch.logical_and(torch.sum(_C < math.pi, -1) == 3, torch.sum(_C > -math.pi, -1) == 3)
+
+
+# async def save_map_unit_async(tid, sufix, N, result_path, mp):
+#     savepath = os.path.join(result_path, f'{str(tid).zfill(len(str(N)))}_{sufix}.png')
+    
+#     # Convert NumPy array to image in executor to prevent blocking
+#     loop = asyncio.get_event_loop()
+#     image = await loop.run_in_executor(None, Image.fromarray, mp)
+    
+#     # Save the image asynchronously
+#     async with aiofiles.open(savepath, 'wb') as f:
+#         await loop.run_in_executor(None, image.save, f, format='PNG')
+
+# class MLTProcessManager:
+#     def __init__(self):
+#         self.current_task = None  # Keep track of the running task
+
+#     async def run(self, rets, const_params, params, function, num_workers=8, is_tqdm=False):
+#         # Cancel the previous task if it's still running
+#         if self.current_task and not self.current_task.done():
+#             print("Cancelling previous save_map_unit task")
+#             self.current_task.cancel()
+#             try:
+#                 await self.current_task
+#             except asyncio.CancelledError:
+#                 print("Previous save_map_unit task cancelled")
+        
+#         # Start a new task
+#         print("Starting save_map_unit task")
+#         self.current_task = asyncio.create_task(save_map_unit_async(tid, sufix, N, result_path, mp))
+        
+#         try:
+#             await self.current_task
+#         except asyncio.CancelledError:
+#             print("Current save_map_unit task cancelled")
+#             raise

@@ -156,6 +156,9 @@ class Cfg:
                     os.makedirs(value, exist_ok=True)
                 text_cfgs += f'{key:<15} : {value}\n'
             setattr(self, key, value)
+        
+        # if self.save_async:
+        #     self.mltmanager = MLTProcessManager()
 
         self.i_step = 1
         self.scores = {key : 0 if value else 1e2 for key, value in self.metrics.getDict().items()}
@@ -332,7 +335,7 @@ class Cfg:
                 # self.record_image(pds, gts)
 
             if self.save_map:
-                if (self.mode == 'train' and self.save_psnr) or self.mode != 'train':
+                if (self.mode == 'train' and (self.save_psnr or self.always_save)) or self.mode != 'train':
                     self.Save_map(pds, gts, flag)
 
         print(logs)
