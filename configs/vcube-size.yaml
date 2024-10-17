@@ -1,7 +1,7 @@
 # example config for CuNeRF
 
 # training
-max_iter : 200000 ##200000
+max_iter : 150000 ##200000
 eval_iter: 20000
 save_iter: 10000
 log_iter : 100
@@ -71,7 +71,7 @@ model:
     otype: HashGrid
     n_levels: 16 ## level of hierachies 
     n_features_per_level: 2 ## F
-    log2_hashmap_size: 19
+    log2_hashmap_size: 21
     base_resolution: 16
     per_level_scale: 1.5
   
