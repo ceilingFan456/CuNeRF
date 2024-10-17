@@ -264,6 +264,7 @@ class VcubeModel(torch.nn.Module):
         self.sampling = methods[coarse.size_network_method]
 
         ## for alternating training
+        self.first_cycle = True
         self.training_modes = coarse.training_modes
         self.training_mode_max_iters = coarse.training_mode_max_iters
         self.training_mode_idx = 0
@@ -305,10 +306,19 @@ class VcubeModel(torch.nn.Module):
         t_vals = torch.cat([v[...,None] for v in torch.meshgrid(torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps))], -1)
         t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
 
-        dxdydz = self.coarse.forward_size(cnts)
-        dxdydz = F.sigmoid(dxdydz)
-        # print(dxdydz)
-        dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
+        if self.first_cycle:
+            left, right = torch.split(LR, [1, 1], dim=-1) ## (B, b, 1)
+            top, bottom = torch.split(TB, [1, 1], dim=-1)
+            l, r = left.expand([B, n_cnts, self.n_samples]), right.expand([B, n_cnts, self.n_samples])
+            t, b = top.expand([B, n_cnts, self.n_samples]), bottom.expand([B, n_cnts, self.n_samples])
+            n = near[:, None].expand([B, n_cnts, self.n_samples])
+            f = far[:, None].expand([B, n_cnts, self.n_samples])
+            dx, dy, dz = (r - l)/2, (t - b)/2, (f - n)/2
+        else:
+            dxdydz = self.coarse.forward_size(cnts)
+            dxdydz = F.sigmoid(dxdydz)
+            # print(dxdydz)
+            dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
         cx, cy, cz = torch.split(cnts, [1,1,1], dim=-1)
 
         ## to get the range for sampling 
@@ -368,8 +378,12 @@ class VcubeModel(torch.nn.Module):
         n = near[:, None].expand([B, n_cnts, self.n_samples])
         f = far[:, None].expand([B, n_cnts, self.n_samples])
 
-        sxsysz = self.coarse.forward_size(cnts)
-        sxsysz = F.relu(sxsysz) + 0.001 ## activation function
+
+        if self.first_cycle:
+            sxsysz = torch.ones((3,))
+        else:
+            sxsysz = self.coarse.forward_size(cnts)
+            sxsysz = F.relu(sxsysz) + 0.001 ## activation function
 
         # print(sxsysz)
         sx, sy, sz = torch.split(sxsysz, [1,1,1], dim=-1)
@@ -423,4 +437,6 @@ class VcubeModel(torch.nn.Module):
         if self.cnt == cur_max_iter:
             self.cnt = 0
             self.training_mode_idx = (self.training_mode_idx + 1) % len(self.training_modes)
+            if self.first_cycle:
+                self.first_cycle = False
     

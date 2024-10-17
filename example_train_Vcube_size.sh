@@ -1,8 +1,8 @@
 # example script for training CuNeRF
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 scale=2
 file="/home/simtech/Qiming/kits19/data/case_00010/case_00010.nii.gz"
-python run.py CuNeRFx$scale --cfg configs/vcube.yaml --scale $scale --mode train --file $file --save_map --resume --multi_gpu
+python run.py CuNeRFx$scale --cfg configs/vcube-size.yaml --scale $scale --mode train --file $file --save_map --resume --multi_gpu
 
 ## case 00000 for single
 ## imaging for coarse + fine
