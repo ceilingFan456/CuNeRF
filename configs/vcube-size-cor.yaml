@@ -2,7 +2,7 @@
 
 # training
 max_iter : 150000 ##200000
-eval_iter: 20000
+eval_iter: 40001
 save_iter: 10000
 log_iter : 100
 bs_train : 1024  # batch size 
@@ -17,7 +17,8 @@ z_scaler : 1
 normalise_to_512: False
 always_save: True
 alternating_training: True
-only_downsampling_in_z: True
+only_downsampling_in_z: False
+direction: coronal
 
 
 # modeling
@@ -36,9 +37,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-size-no-512
-save_path   : save-vcube-size-no-512
-log_path    : save-vcube-size-no-512
+result_path : save-sag
+save_path   : save-sag
+log_path    : save-sag
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -105,6 +106,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   eval :
     file    : $file
@@ -116,6 +118,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   traineval :
     file    : $file
@@ -127,6 +130,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction : $direction
 
   test :
     file      : $file
@@ -139,6 +143,7 @@ dataset :
     asteps    : $asteps
     z_scaler  : $z_scaler
     only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
 dataloader :
   mode : $mode

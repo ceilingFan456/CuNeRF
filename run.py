@@ -107,8 +107,8 @@ def train(cfg):
             ## always execute the following code, but non-major ranks do not save.     
             with torch.no_grad():
                 to_save = not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0)
+                if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg, to_save=to_save) ## do this one first to ensure when self.psnr for traineval too will be set to true when metric improves.
                 if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg, to_save=to_save)
-                if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg, to_save=to_save)
                 
                 cfg.pbar.update(1)
 
@@ -148,7 +148,7 @@ def eval(cfg, to_save=True):
                 e = min((idx + 1) * coords.shape[0], N)
                 pds[s:e, l:r] = rgb.cpu().numpy() 
 
-        pds = pds.reshape(N, W, H)
+        pds = pds.reshape(N, H, W)
         
         if to_save: 
         ## log timing
@@ -186,7 +186,7 @@ def traineval(cfg, to_save=True):
                 e = min((idx + 1) * coords.shape[0], N)
                 pds[s:e, l:r] = rgb.cpu().numpy()
 
-        pds = pds.reshape(N, W, H)
+        pds = pds.reshape(N, H, W)
         
         if to_save:
             end_time = time.time()
@@ -220,7 +220,7 @@ def test(cfg):
                     rgb, _ = cfg.Render(select_coords, depths, is_train=False, R=R)
                     rgb.cpu().numpy()
                     pds[idx, valid_inds] = rgb.cpu().numpy()
-        pds = np.clip(pds.reshape((N, W, H)), 0, 1)
+        pds = np.clip(pds.reshape((N, H, W)), 0, 1)
 
     if cfg.save_map: 
         cfg.Save_test_map(pds, zs, angles, scales)

@@ -38,7 +38,8 @@ class Base(Dataset):
                 # self.vals = list(range(self.len))
                 # self.LEN = self.len
                 if self.mode == 'eval':
-                    self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
+                    # self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
+                    self.vals = list(range(0, self.len))
                 elif self.mode == 'traineval':
                     self.vals = list(filter(lambda x: x % self.scale == 0, range(self.len)))
                 self.LEN = len(self.vals)
@@ -69,7 +70,10 @@ class Base(Dataset):
         coords = torch.stack([i, j], -1)
 
         if self.mode == 'train':
-            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+            if self.only_downsampling_in_z:
+                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
+            else:
+                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
             z_ind = index // self.scale * self.scale
 
             xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
@@ -77,7 +81,10 @@ class Base(Dataset):
                 xy_inds = xy_inds[np.random.choice(xy_inds.shape[0], size=[self.bsize], replace=False)]
                 
         elif self.mode == 'traineval':
-            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+            if self.only_downsampling_in_z:
+                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
+            else:
+                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
             z_ind = self.vals[index]
 
             xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
@@ -135,6 +142,18 @@ class Medical3D(Base):
             self.data = self.super_sampling_in_z(self.data)
             self.len, self.H, self.W = self.data.shape
             print (self.len, self.H, self.W)
+
+        ## current orientation should be (z, y, x)
+        if self.direction == 'sagittal': ## (x, y, z)
+            self.data = self.data.permute(2, 1, 0)
+            print(f"direction = {self.direction}, data shape = {self.data.shape}")
+            self.len, self.H, self.W = self.data.shape
+            print (self.len, self.H, self.W)
+        elif self.direction == 'coronal': ## (y, x, z)
+            self.data = self.data.permute(1, 2, 0)
+            print(f"direction = {self.direction}, data shape = {self.data.shape}")
+            self.len, self.H, self.W = self.data.shape
+            print (self.len, self.H, self.W) 
         
         self.setup()
 

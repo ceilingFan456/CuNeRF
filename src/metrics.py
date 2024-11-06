@@ -17,11 +17,12 @@ class Metrics:
         return self.metrics
     
     def evaluation(self, pds, gts):
-        scores = {k : getattr(self, k.lower())(pds, gts) for k, v in filter(lambda x : x[0] != 'avg', self.metrics.items())}
+        scores = {k : getattr(self, k.lower())(pds, gts) for k, v in filter(lambda x : x[0] != 'avg' and x[1], self.metrics.items())}
         scores = {**scores, 'avg' : self.avg(scores)}
         return scores
 
     def psnr(self, pds, gts):
+        print(pds.shape, gts.shape)
         return peak_signal_noise_ratio(gts, pds, data_range=1)
     
     # NWH

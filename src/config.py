@@ -331,11 +331,12 @@ class Cfg:
             logs = f'[EVAL] {scores_txt}' if flag == 'eval' else f'[TRNEVAL] {scores_txt}'
             if self.mode == 'train':
                 self.log_file.write(f'{logs}\n')
-                self.Update_score(scores)
+                if flag == 'eval':
+                    self.Update_score(scores)
                 # self.record_image(pds, gts)
 
             if self.save_map:
-                if (self.mode == 'train' and (self.save_psnr or self.always_save)) or self.mode != 'train':
+                if (self.mode == 'train' and (self.save_psnr)) or self.mode != 'train':
                     self.Save_map(pds, gts, flag)
 
         print(logs)

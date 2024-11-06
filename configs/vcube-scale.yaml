@@ -14,9 +14,10 @@ lr_final : 0.001 ## 0.00002
 workers  : 4
 
 z_scaler : 1
-normalise_to_512: True
+normalise_to_512: False
 always_save: True
 alternating_training: True
+only_downsampling_in_z: True
 
 
 # modeling
@@ -35,9 +36,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-scale
-save_path   : save-vcube-scale
-log_path    : save-vcube-scale
+result_path : save-vcube-scale-no-512
+save_path   : save-vcube-scale-no-512
+log_path    : save-vcube-scale-no-512
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -103,6 +104,7 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
 
   eval :
     file    : $file
@@ -113,6 +115,7 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
 
   traineval :
     file    : $file
@@ -123,6 +126,7 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
 
   test :
     file      : $file
