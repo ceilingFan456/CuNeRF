@@ -37,9 +37,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-size-no-512
-save_path   : save-vcube-size-no-512
-log_path    : save-vcube-size-no-512
+result_path : save-vcube-size-no-512-old
+save_path   : save-vcube-size-no-512-old
+log_path    : save-vcube-size-no-512-old
 
 loss : 
   name : MSE_LOSS_REGULARISATION

@@ -73,6 +73,8 @@ class Cfg:
 
         def load_dataset(self, cfg):
             mode, name = cfg.pop('mode'), cfg.pop('dname')
+            if mode == 'eval_size':
+                mode = 'train'
             setattr(self, f'{mode}set', getattr(dataset, name)(mode=mode, **cfg[mode]))
             if mode == 'train':
                 self.evalset = getattr(dataset, name)(mode='eval', **cfg['eval'])
@@ -85,6 +87,8 @@ class Cfg:
             else:
                 cfg["shuffle"] = False
                 cfg["sampler"] = DistributedSampler(self.trainset)
+                if mode == 'eval_size':
+                    mode = 'eval'
                 setattr(self, f'{mode}loader', DataLoader(getattr(self, f'{mode}set'), **cfg[mode]))
 
             if mode == 'train':
@@ -128,9 +132,9 @@ class Cfg:
 
         def load_vcubemodel(self, cfg):
             if not self.cfg["multi_gpu"]:
-                self.fullmodel = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+                self.fullmodel = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn, alternating_training=self.cfg["alternating_training"]).cuda()
             else:
-                model = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn).cuda()
+                model = VcubeModel(coarse=self.model, fine=self.model_ft, sample_fn=self.sample_fn, render_fn=self.render_fn, imp_fn=self.imp_fn, alternating_training=self.cfg["alternating_training"]).cuda()
                 self.fullmodel = DDP(model, device_ids=[self.rank])
             
             

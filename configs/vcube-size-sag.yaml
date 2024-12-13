@@ -18,7 +18,7 @@ normalise_to_512: False
 always_save: True
 alternating_training: True
 only_downsampling_in_z: False
-direction: coronal
+direction: sagittal
 
 
 # modeling

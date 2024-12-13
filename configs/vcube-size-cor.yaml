@@ -2,7 +2,7 @@
 
 # training
 max_iter : 150000 ##200000
-eval_iter: 40001
+eval_iter: 20000
 save_iter: 10000
 log_iter : 100
 bs_train : 1024  # batch size 

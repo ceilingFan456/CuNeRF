@@ -33,7 +33,7 @@ def super_sampling_in_z(data, z_size=512):
     new_data = torch.gather(data, 0, new_data)
     return new_data
 
-def load_data(filepath, supersample=True):
+def load_data(filepath, supersample=False):
     start_time = time.time()
     data = load_file(filepath)
     data = nomalize(data)
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     parser.add_argument("--case", type=str, default="case_00000")
     parser.add_argument("--n_eval", type=int, default=50)
     parser.add_argument("--scale", type=int, default=2)
-    parser.add_argument("--save_folder", type=str, default="save_bicubic-512-tmp")
+    parser.add_argument("--save_folder", type=str, default="save_bicubic-tmp")
     args = parser.parse_args()
     
     torch.set_default_tensor_type('torch.cuda.FloatTensor')

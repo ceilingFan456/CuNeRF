@@ -18,6 +18,8 @@ normalise_to_512: False
 always_save: True
 alternating_training: True
 only_downsampling_in_z: True
+direction: axial
+
 
 
 # modeling
@@ -105,6 +107,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   eval :
     file    : $file
@@ -116,6 +119,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   traineval :
     file    : $file
@@ -127,6 +131,7 @@ dataset :
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
+    direction : $direction
 
   test :
     file      : $file

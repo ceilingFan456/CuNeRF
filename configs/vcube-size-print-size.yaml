@@ -17,7 +17,7 @@ z_scaler : 1
 normalise_to_512: False
 always_save: True
 alternating_training: True
-only_downsampling_in_z: False
+only_downsampling_in_z: True
 direction: axial
 
 
@@ -37,9 +37,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-size-no-512
-save_path   : save-vcube-size-no-512
-log_path    : save-vcube-size-no-512
+result_path : save-vcube-size-no-512-print-size
+save_path   : save-vcube-size-no-512-print-size
+log_path    : save-vcube-size-no-512-print-size
 
 loss : 
   name : MSE_LOSS_REGULARISATION

@@ -17,6 +17,8 @@ import os
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn.functional as F
@@ -32,7 +34,7 @@ def argParse():
     parser.add_argument('expname', type=str)
     parser.add_argument('--cfg', default='configs/example.yaml')
     parser.add_argument('--scale', type=int, default=2)
-    parser.add_argument('--mode', choices=['train', 'eval', 'test'], default='train')
+    parser.add_argument('--mode', choices=['train', 'eval', 'test', 'eval_size'], default='train')
     parser.add_argument('--file', type=str)
     parser.add_argument('--max_iter', type=int)
     parser.add_argument('--eval_iter', type=int)
@@ -66,11 +68,13 @@ def train(cfg):
         for batch in cfg.trainloader:
 
             ## freeze network for training.
-            if cfg.alternating_training:
+            if cfg.alternating_training == True:
                 if cfg.multi_gpu:
                     cfg.fullmodel.module.alternating_training(cfg.i_step)
                 else:
                     cfg.fullmodel.alternating_training(cfg.i_step)
+            elif cfg.alternating_training == False:
+                cfg.fullmodel.module.coarse.unfreeze_all()
 
             ## training pipeline.
             cfg.optim.zero_grad()
@@ -109,6 +113,7 @@ def train(cfg):
                 to_save = not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0)
                 if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg, to_save=to_save) ## do this one first to ensure when self.psnr for traineval too will be set to true when metric improves.
                 if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg, to_save=to_save)
+                # if cfg.i_step % cfg.eval_iter == 0: globals()['eval_size'](cfg, to_save=to_save)
                 
                 cfg.pbar.update(1)
 
@@ -193,6 +198,114 @@ def traineval(cfg, to_save=True):
             elapsed_time = (end_time - start_time) / len(dataloader)
             cfg.timing_file.write(f'{elapsed_time:.4f}\n')
             cfg.evaluation(pds, "traineval")
+
+
+def eval_size(cfg, to_save=True):
+    N, W, H, S = cfg.evalset.__len__(), cfg.evalset.W, cfg.evalset.H, cfg.bs_eval
+    pds = np.zeros((N, W * H, 3))
+    dataloader = tqdm(cfg.evalloader)
+    cfg.fullmodel.module.first_cycle = False
+
+    start_time = time.time()
+    with torch.no_grad():
+        for idx, batch in enumerate(dataloader):
+            dataloader.set_description(f'[EVAL] : {idx}')
+            coords, depths = batch
+            # coords = coords.squeeze(0)
+            # for cidx in range(math.ceil(W * H / S)):
+            #     select_coords = coords[list(range(S * cidx, min(S * (cidx + 1), len(coords))))]
+            #     rgb, _ = cfg.Render(select_coords, depths, is_train=False)
+            #     pds[idx, S * cidx : S * (cidx + 1)] = rgb.cpu().numpy()
+            # assert S * (cidx + 1) >= H * W
+            
+            for cidx in range(math.ceil(W * H / S)):
+                l = S * cidx
+                r = min(S * (cidx + 1), W*H)
+                chunk = coords[:, l:r]
+                # rgb, _ = cfg.fullmodel.module.eval_forward((chunk, depths,))
+                dxdydz = cfg.fullmodel.module.eval_size((chunk, depths,))
+                s = idx * coords.shape[0]
+                e = min((idx + 1) * coords.shape[0], N)
+                pds[s:e, l:r] = dxdydz.cpu().numpy()
+
+        pds = pds.reshape(N, H, W, 3)
+        
+        if to_save: 
+        ## log timing
+            ## save the images as rgb images?
+            result_path = os.path.join(cfg.result_path, "eval_size")
+            os.makedirs(result_path, exist_ok=True)
+
+            names = ["dx", "dy", "dz"]
+            text_size = 40
+            for i in range(10):
+                ## save the graph as three heat map plots
+                for j in range(3):
+                    nm = names[j]
+                    savepath = os.path.join(result_path, f'{str(i).zfill(len(str(N)))}_{nm}.png')
+                    plt.figure(figsize=(10, 10))  # Adjust the figure size as needed
+                    plt.imshow(pds[i, :, :, j], cmap="viridis")
+                    plt.title(nm, fontsize=text_size)
+                    cbar = plt.colorbar()
+                    cbar.ax.tick_params(labelsize=text_size)  # Adjust the label size as needed
+                    plt.axis('off')
+                    plt.savefig(savepath)
+                    plt.close()
+                
+                ## save three images as a row with the same scale and name as dxdydz
+                savepath = os.path.join(result_path, f'{str(i).zfill(len(str(N)))}.png')
+                plt.figure(figsize=(30, 10))  # Adjust the figure size as needed
+                for j in range(3):
+                    nm = names[j]
+                    plt.subplot(1, 3, j+1)
+                    plt.imshow(pds[i, :, :, j], cmap="viridis")
+                    plt.title(nm, fontsize=text_size)
+                    cbar = plt.colorbar()
+                    cbar.ax.tick_params(labelsize=text_size)  # Adjust the label size as needed
+                    plt.axis('off')
+                plt.savefig(savepath)
+                plt.close()
+
+                ## concatenate the three images into one image
+                savepath = os.path.join(result_path, f'{str(i).zfill(len(str(N)))}_row.png')
+                plt.figure(figsize=(30, 10))  # Adjust the figure size as needed
+                plt.imshow(np.concatenate([pds[i, :, :, 0], pds[i, :, :, 1], pds[i, :, :, 2]], axis=1), cmap="viridis")
+                cbar = plt.colorbar()
+                cbar.ax.tick_params(labelsize=text_size)  # Adjust the label size as needed
+                plt.axis('on')
+                plt.savefig(savepath)
+                plt.close()
+
+                ## save with gt images 
+                savepath = os.path.join(result_path, f'{str(i).zfill(len(str(N)))}_gt.png')
+                plt.figure(figsize=(40, 10))  # Adjust the figure size as needed
+                for j in range(3):
+                    nm = names[j]
+                    plt.subplot(1, 4, j+2)
+                    plt.imshow(pds[i, :, :, j], cmap="viridis")
+                    plt.title(nm, fontsize=text_size)
+                    cbar = plt.colorbar()
+                    cbar.ax.tick_params(labelsize=text_size)  # Adjust the label size as needed
+                    plt.axis('off')
+                gt = cfg.evalset.getLabel()
+                plt.subplot(1, 4, 1)
+                plt.imshow(gt[i, :, :], cmap="viridis")
+                plt.title("gt", fontsize=text_size)
+                plt.axis('off')
+                plt.savefig(savepath)
+                plt.close()
+
+                ## save cube volume at each point 
+                savepath = os.path.join(result_path, f'{str(i).zfill(len(str(N)))}_cube.png')
+                plt.figure(figsize=(10, 10))  # Adjust the figure size as needed
+                plt.imshow(pds[i, :, :, 0] * pds[i, :, :, 1] * pds[i, :, :, 2], cmap="viridis")
+                plt.title("cube", fontsize=text_size)
+                cbar = plt.colorbar()
+                cbar.ax.tick_params(labelsize=text_size)  # Adjust the label size as needed
+                plt.axis('off')
+                plt.savefig(savepath)
+                plt.close()
+
         
 def test(cfg):
     N, W, H, S = cfg.testset.__len__(), int(cfg.cam_scale * cfg.testset.W), int(cfg.cam_scale * cfg.testset.H), cfg.bs_test

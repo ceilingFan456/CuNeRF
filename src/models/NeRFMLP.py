@@ -253,7 +253,7 @@ class VcubeMLP(torch.nn.Module):
         self.unfreeze_encoding()
 
 class VcubeModel(torch.nn.Module):
-    def __init__(self, coarse, fine, sample_fn, render_fn, imp_fn):
+    def __init__(self, coarse, fine, sample_fn, render_fn, imp_fn, alternating_training=True):
         super(VcubeModel, self).__init__()
         print("Using VcubeModel")
         self.coarse = coarse
@@ -264,11 +264,15 @@ class VcubeModel(torch.nn.Module):
         self.sampling = methods[coarse.size_network_method]
 
         ## for alternating training
-        self.first_cycle = True
+        self.first_cycle = False
         self.training_modes = coarse.training_modes
         self.training_mode_max_iters = coarse.training_mode_max_iters
         self.training_mode_idx = 0
         self.cnt = 0
+
+        if alternating_training:
+            print("Using alternating training")
+            self.first_cycle = True
 
     def forward(self, x):
         coords, depths = x
@@ -283,6 +287,29 @@ class VcubeModel(torch.nn.Module):
         coords = coords / (2*math.pi) + 0.5
         depths = depths / (2*math.pi) + 0.5
         return self.Render(coords, depths, is_train=False)
+    
+    def eval_size(self, x):
+        coords, depths = x
+        coords = coords / (2*math.pi) + 0.5
+        depths = depths / (2*math.pi) + 0.5
+
+        ## dic = self.sampling_with_size(coords, depths, is_train=False)
+        batch = coords
+        B = batch.shape[0]
+        # n_cnts = batch.shape[1]
+        (cnts, LR, TB), (near, far) = torch.split(batch, [3, 2, 2], dim=-1), torch.split(depths, [1, 1], dim=-1)
+
+        # steps = round(math.pow(self.n_samples, 1./3) + 1)
+        # t_vals = torch.cat([v[...,None] for v in torch.meshgrid(torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps), torch.linspace(0., 1., steps=steps))], -1)
+        # t_vals = t_vals[1:, 1:, 1:].contiguous().view(-1, 3) ## (64, 3)
+
+        dxdydz = self.coarse.forward_size(cnts)
+        dxdydz = F.sigmoid(dxdydz)
+        # print(dxdydz)
+        # dx, dy, dz = torch.split(dxdydz, [1,1,1], dim=-1)
+        
+        # return torch.tensor((dic['dx'], dic['dy'], dic['dz']))
+        return dxdydz
     
     def Render(self, coord_batch, depths, is_train=False, R=None):
         ans0 = self.sampling(coord_batch, depths, is_train=is_train, R=R)

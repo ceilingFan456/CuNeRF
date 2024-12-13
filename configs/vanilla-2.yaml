@@ -16,6 +16,9 @@ workers  : 4
 z_scaler : 1
 normalise_to_512: True
 always_save: True
+alternating_training: absent
+only_downsampling_in_z: False
+direction: axial
 
 # modeling
 stype     : cube
@@ -74,6 +77,8 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   eval :
     file    : $file
@@ -84,6 +89,8 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
+    direction: $direction
 
   traineval :
     file    : $file
@@ -94,6 +101,8 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
+    only_downsampling_in_z: $only_downsampling_in_z
+    direction : $direction
 
   test :
     file      : $file

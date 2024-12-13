@@ -130,7 +130,7 @@ class Medical3D(Base):
             self.scales = np.linspace(self.scales[0], self.scales[1], self.asteps) if len(self.scales) == 2 else [self.scales[0]] * self.asteps
             self.zs = np.linspace(self.zpos[0], self.zpos[1], self.asteps) if len(self.zpos) == 2 else [self.zpos[0]] * self.asteps
 
-    def load_data(self):
+    def load_data(self, normalise_to_512=True):
         data = self.load_file()
         data = self.nomalize(data)
         self.data = self.align(data)
@@ -138,7 +138,7 @@ class Medical3D(Base):
         print (self.len, self.H, self.W)
         
         ## resize the data to 512 x 512 x 512
-        if self.normalise_to_512:
+        if normalise_to_512:
             self.data = self.super_sampling_in_z(self.data)
             self.len, self.H, self.W = self.data.shape
             print (self.len, self.H, self.W)
