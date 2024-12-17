@@ -112,7 +112,7 @@ def train(cfg):
             with torch.no_grad():
                 to_save = not cfg.multi_gpu or (cfg.multi_gpu and cfg.rank == 0)
                 if cfg.i_step % cfg.eval_iter == 0: globals()['eval'](cfg, to_save=to_save) ## do this one first to ensure when self.psnr for traineval too will be set to true when metric improves.
-                if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg, to_save=to_save)
+                # if cfg.i_step % cfg.eval_iter == 0: globals()['traineval'](cfg, to_save=to_save)
                 # if cfg.i_step % cfg.eval_iter == 0: globals()['eval_size'](cfg, to_save=to_save)
                 
                 cfg.pbar.update(1)

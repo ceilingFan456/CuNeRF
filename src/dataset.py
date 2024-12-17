@@ -37,12 +37,9 @@ class Base(Dataset):
             else:
                 # self.vals = list(range(self.len))
                 # self.LEN = self.len
-                if self.mode == 'eval':
-                    # self.vals = list(filter(lambda x: x % self.scale != 0, range(self.len)))
-                    self.vals = list(range(0, self.len))
-                elif self.mode == 'traineval':
-                    self.vals = list(filter(lambda x: x % self.scale == 0, range(self.len)))
+                self.vals = list(range(0, self.len)) if self.mode == 'eval' else list(filter(lambda x: x % self.scale == 0, range(self.len))) ## train_eval case.
                 self.LEN = len(self.vals)
+                
             self.pad = self.radius * self.scale
 
         elif self.mode == 'test':
@@ -65,43 +62,82 @@ class Base(Dataset):
         coords = torch.cat([xy_coords, torch.full((xy_coords.shape[0], 1), z_coord), LR_coords, TB_coords], 1)
         return coords
 
+    # def single_view_sampling(self, index):
+    #     j, i = torch.meshgrid(torch.linspace(-np.pi, np.pi, self.H + 2 * self.pad), torch.linspace(-np.pi, np.pi, self.W + 2 * self.pad))
+    #     coords = torch.stack([i, j], -1)
+
+    #     ## meshgrid
+    #     ## row, col 
+    #     if self.mode == 'train':
+    #         if self.only_downsampling_in_z:
+    #             xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
+    #         else:
+    #             xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+    #         z_ind = index // self.scale * self.scale
+
+    #         xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+    #         if xy_inds.shape[0] > self.bsize:
+    #             xy_inds = xy_inds[np.random.choice(xy_inds.shape[0], size=[self.bsize], replace=False)]
+                
+    #     elif self.mode == 'traineval':
+    #         if self.only_downsampling_in_z:
+    #             xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
+    #         else:
+    #             xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+    #         z_ind = self.vals[index]
+
+    #         xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+            
+    #     else:
+    #         xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
+    #         xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+    #         z_ind = self.vals[index]
+
+    #     head, z_coord, tail = [self.z_trans(z) for z in [z_ind - self.pad * self.z_scaler, z_ind, z_ind + self.pad * self.z_scaler]]
+    #     coords = self.sampling(coords, xy_inds, z_coord, self.pad)
+        
+    #     data = self.data[z_ind, xy_inds[:, 0], xy_inds[:, 1]]
+    #     # return (data, coords, (np.float32(head), np.float32(tail))) if self.mode == 'train' else (coords, (np.float32(head), np.float32(tail)))
+    #     return (data, coords, torch.tensor([head, tail])) if self.mode == 'train' else (coords, torch.tensor([head, tail]))
+
     def single_view_sampling(self, index):
         j, i = torch.meshgrid(torch.linspace(-np.pi, np.pi, self.H + 2 * self.pad), torch.linspace(-np.pi, np.pi, self.W + 2 * self.pad))
         coords = torch.stack([i, j], -1)
-
+        
         if self.mode == 'train':
-            if self.only_downsampling_in_z:
-                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
-            else:
-                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
             z_ind = index // self.scale * self.scale
-
-            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+            m0 = self.dummy_mask[z_ind] if self.only_downsampling_in_z else self.downsampling_mask[z_ind]
+            m1 = self.value_mask[z_ind] if self.use_mask_for_training else self.dummy_mask[z_ind]
+            xy_inds = (m0 * m1).nonzero()
+            # print(f"inside single_view_sampling: downsampling_mask shape = {self.downsampling_mask.nonzero().shape}")
+            # print(xy_inds.shape)
+            # print(self.dummy_mask[z_ind].nonzero().shape)
+            # print(self.downsampling_mask[z_ind].nonzero().shape)
+            # print(self.value_mask[z_ind].nonzero().shape)
+            
+            ## random shuffle if too many
             if xy_inds.shape[0] > self.bsize:
                 xy_inds = xy_inds[np.random.choice(xy_inds.shape[0], size=[self.bsize], replace=False)]
-                
+        
+        ## the two modes below will output regardless of value masking 
+        ## we only consider value masking during metric computation
+        ## application of mask is during evaluation
         elif self.mode == 'traineval':
-            if self.only_downsampling_in_z:
-                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
-            else:
-                xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
-            z_ind = self.vals[index]
-
-            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+            z_ind = self.vals[index] ## compute the performance on 256, 256, 256 
+            xy_inds = self.dummy_mask[z_ind].nonzero() if self.only_downsampling_in_z else self.downsampling_mask[z_ind].nonzero()
             
-        else:
-            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H), torch.linspace(0, self.W - 1, self.W))
-            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
-            z_ind = self.vals[index]
-
+        else: ## self.mode == 'eval':
+            z_ind = self.vals[index] ## compute the performance on 512, 512, 512
+            xy_inds = self.dummy_mask[z_ind].nonzero()
+                
         head, z_coord, tail = [self.z_trans(z) for z in [z_ind - self.pad * self.z_scaler, z_ind, z_ind + self.pad * self.z_scaler]]
         coords = self.sampling(coords, xy_inds, z_coord, self.pad)
         
         data = self.data[z_ind, xy_inds[:, 0], xy_inds[:, 1]]
         # return (data, coords, (np.float32(head), np.float32(tail))) if self.mode == 'train' else (coords, (np.float32(head), np.float32(tail)))
         return (data, coords, torch.tensor([head, tail])) if self.mode == 'train' else (coords, torch.tensor([head, tail]))
-
-
+                
+                
     def multi_view_and_scale_sampling(self, zpos, angle, scale):
         H, W, P = [int(self.cam_scale * scale * a) for a in [self.H, self.W, self.pad]]
         j, i = torch.meshgrid(torch.linspace(-self.cam_scale * np.pi, self.cam_scale * np.pi, H + P), torch.linspace(-self.cam_scale * np.pi, self.cam_scale * np.pi, W + P))
@@ -132,7 +168,7 @@ class Medical3D(Base):
 
     def load_data(self, normalise_to_512=True):
         data = self.load_file()
-        data = self.nomalize(data)
+        data = self.nomalize(data) ## global normalised to [0, 1]
         self.data = self.align(data)
         self.len, self.H, self.W = self.data.shape
         print (self.len, self.H, self.W)
@@ -154,9 +190,56 @@ class Medical3D(Base):
             print(f"direction = {self.direction}, data shape = {self.data.shape}")
             self.len, self.H, self.W = self.data.shape
             print (self.len, self.H, self.W) 
-        
-        self.setup()
 
+
+        self.generate_mask()    
+        self.setup()
+        
+    def generate_mask(self):
+        ## generate mask for downsampling. 
+        scale = self.scale
+        self.downsampling_mask = torch.zeros(self.H, self.W) ## only compute for one frame and broadcast to all frames
+        ## generate indices for downsampling ## same as original code
+        yx_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // scale), torch.linspace(0, self.W - 1, self.W // scale))
+        yx_inds = torch.stack(yx_inds, -1).reshape([-1, 2]).long()
+        ## make index list into a mask 
+        self.downsampling_mask[yx_inds[:, 0], yx_inds[:, 1]] = 1
+        self.downsampling_mask = self.downsampling_mask.expand(self.data.shape) ## only compute for one frame and broadcast to all frames
+        print(f"inside generate_mask: downsampling_mask shape = {self.downsampling_mask.nonzero().shape}")
+
+        ## generate mask from thresholding
+        ## TODO find contour
+        self.threshold = 15/255
+        self.value_mask = self.data > self.threshold
+
+        binary_mask_np = self.value_mask.cpu().numpy()
+        contour_masks = []
+        import cv2 
+        for i in range(self.data.shape[0]):
+            binary_mask = binary_mask_np[i].astype(np.uint8)
+            contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contour_mask = np.zeros_like(binary_mask)
+            cv2.drawContours(contour_mask, contours, -1, 1, thickness=cv2.FILLED)
+            contour_masks.append(contour_mask)
+        self.value_mask = torch.tensor(np.stack(contour_masks))
+
+        ## visualise the mask
+        if self.mode == 'train':
+            for i in range(self.data.shape[0]):
+                img = Image.fromarray((self.value_mask[i].cpu().numpy() * 255).astype(np.uint8))
+                path = os.path.join(self.result_path, "masks", f"mask_{i}.png")
+                img.save(path)
+                break
+        
+        ## generate training mask
+        self.training_mask = self.downsampling_mask * self.value_mask ## auto broadcasting to all frames, Z, H, W
+        
+        ## generate evaluation mask
+        self.evaluation_mask = self.value_mask ## H x W x 3
+
+        ## generate dummy mask 
+        self.dummy_mask = torch.ones(self.H, self.W).expand(self.data.shape) ## only compute for one frame and broadcast to all frames
+        
     def align(self, data):
         if data.shape[1] != data.shape[2]:
             if data.shape[0] == data.shape[2]:
@@ -184,12 +267,12 @@ class Medical3D(Base):
         return (data - data.min()) / (data.max() - data.min())
 
     def getLabel(self):
-        if self.mode == "traineval":
-            xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
-            xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
-            vals_expanded = torch.tensor(self.vals)[:, None]
-            data = self.data[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
-            return data.reshape(len(self.vals), self.H // self.scale, self.W // self.scale).cpu().numpy()
+        # if self.mode == "traineval":
+        #     xy_inds = torch.meshgrid(torch.linspace(0, self.H - 1, self.H // self.scale), torch.linspace(0, self.W - 1, self.W // self.scale))
+        #     xy_inds = torch.stack(xy_inds, -1).reshape([-1, 2]).long()
+        #     vals_expanded = torch.tensor(self.vals)[:, None]
+        #     data = self.data[vals_expanded, xy_inds[:, 0], xy_inds[:, 1]]
+        #     return data.reshape(len(self.vals), self.H // self.scale, self.W // self.scale).cpu().numpy()
         return self.data[self.vals].cpu().numpy()
 
     ## super sampling in z direction to get 512 x 512 x 512
@@ -208,3 +291,12 @@ class Medical3D(Base):
         new_data = new_data.expand(512, 512, 512)
         new_data = torch.gather(data, 0, new_data)
         return new_data
+
+    ## use value mask for evaluation since 512^2
+    ## use training mask for training or traineval since 256^2
+    def get_mask_for_evaluation(self):
+        m0 = self.value_mask if self.use_mask_for_evaluation else self.dummy_mask
+        m1 = self.dummy_mask if self.mode == 'eval' else self.downsampling_mask
+        # res = {"train": self.downsampling_mask, "eval": self.dummy_mask, "traineval": self.downsampling_mask[self.vals]}
+        # m1 = res[self.mode]
+        return m0 * m1 if self.mode == 'eval' else (m0*m1)[self.vals] ## for traineval

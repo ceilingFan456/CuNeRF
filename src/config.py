@@ -323,26 +323,74 @@ class Cfg:
         out = self.render_fn(raw, **ans)
         return out['rgb'], out0['rgb']
     
-    def evaluation(self, pds, flag="eval"):
-        if flag == 'eval':
-            gts = self.evalset.getLabel()
-        elif flag == 'traineval':
-            gts = self.trainevalset.getLabel()
+    # def evaluation(self, pds, flag="eval"):
+    #     if flag == 'eval':
+    #         gts = self.evalset.getLabel()
+    #     elif flag == 'traineval':
+    #         gts = self.trainevalset.getLabel()
 
+    #     with torch.no_grad():
+    #         scores = self.metrics.evaluation(pds, gts)
+    #         scores_txt = reduce(lambda x1, x2 : x1 + ' | ' + x2, [f'{k.upper()} : {v}' for k, v in scores.items()])
+    #         logs = f'[EVAL] {scores_txt}' if flag == 'eval' else f'[TRNEVAL] {scores_txt}'
+    #         if self.mode == 'train':
+    #             self.log_file.write(f'{logs}\n')
+    #             if flag == 'eval':
+    #                 self.Update_score(scores)
+    #             # self.record_image(pds, gts)
+
+    #         if self.save_map:
+    #             if (self.mode == 'train' and (self.save_psnr)) or self.mode != 'train':
+    #                 self.Save_map(pds, gts, flag)
+
+    #     print(logs)
+    def evaluation(self, pds, flag="eval", save=False):
+        ## get groundtruth
+        gts = self.evalset.getLabel() if flag == 'eval' else self.trainevalset.getLabel()
+        mask = self.evalset.get_mask_for_evaluation() if flag == 'eval' else self.trainevalset.get_mask_for_evaluation()
+        mask = mask.cpu().numpy().astype(bool)
+        
+        scores = []
+        ## compute metrics
+        ## psnr only for points in the target region
         with torch.no_grad():
-            scores = self.metrics.evaluation(pds, gts)
-            scores_txt = reduce(lambda x1, x2 : x1 + ' | ' + x2, [f'{k.upper()} : {v}' for k, v in scores.items()])
-            logs = f'[EVAL] {scores_txt}' if flag == 'eval' else f'[TRNEVAL] {scores_txt}'
-            if self.mode == 'train':
-                self.log_file.write(f'{logs}\n')
-                if flag == 'eval':
-                    self.Update_score(scores)
-                # self.record_image(pds, gts)
-
-            if self.save_map:
-                if (self.mode == 'train' and (self.save_psnr)) or self.mode != 'train':
-                    self.Save_map(pds, gts, flag)
-
+            ## only evaluate the centre part too. 
+            m0 = torch.zeros_like(mask)
+            s = gts.shape[1] // 4
+            m0[:, s:-s, s:-s] = 1
+            m1 = mask * m0
+            pdd = pds[m1]
+            gtd = gts[m1]
+            scores.append(self.metrics.psnr(pdd, gtd))
+        
+        ## compute contour psnr
+        with torch.no_grad():
+            pdd = pds[mask]
+            gtd = gts[mask]
+            scores.append(self.metrics.mse(pdd, gtd))
+        
+        ## compute ssim for centre region only 
+        with torch.no_grad():
+            s = gts.shape[1] // 4
+            pdd = pds[:, s:-s, s:-s]
+            gtd = gts[:, s:-s, s:-s]
+            scores.append(self.metrics.ssim(pdd, gtd))
+        
+        scores = {k : v for k, v in zip(['centre-psnr', 'psnr', 'ssim'], scores)}
+        scores_txt = reduce(lambda x1, x2 : x1 + ' | ' + x2, [f'{k.upper()} : {v}' for k, v in scores.items()])
+        logs = f'[EVAL] {scores_txt}' if flag == 'eval' else f'[TRNEVAL] {scores_txt}'
+        if self.mode == 'train':
+            self.log_file.write(f'{logs}\n')
+            if flag == 'eval':
+                self.Update_score(scores)
+            # self.record_image(pds, gts)
+        
+        # if self.save_map:
+        #     if (self.mode == 'train' and (self.save_psnr)) or self.mode != 'train':
+        #         self.Save_map(pds, gts, flag)
+        if self.i_step % self.save_image_iter == 0:
+            self.Save_map(pds, gts, flag)
+        
         print(logs)
 
 
