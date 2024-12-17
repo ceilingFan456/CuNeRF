@@ -1,38 +1,29 @@
 # example config for CuNeRF
 
 # training
-max_iter : 150000 ##200000
-eval_iter: 10000
-save_iter: 10000
+max_iter : 40000 ##200000
+eval_iter: 2
+save_iter: 100000
 log_iter : 100
 bs_train : 1024  # batch size 
 bs_eval  : 32768
 bs_test  : $bs_eval
-N_eval   : 
+N_eval   : 5
 lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
 
-## experiment parameters
-z_scaler : 1 ## for fixed cubesize, use this value to scale cube in z direction
+z_scaler : 4
+normalise_to_512: True
 always_save: True
-normalise_to_512: False ## normalise to 512x512x512
-alternating_training: True ## alternate training between colour and size, if not relavent, set to absent 
-only_downsampling_in_z: False ## for comparison with original saint, tvsrn
-direction: axial ## verify if anisotropic
-
-use_mask_for_training: True ## only use centre area for training and evaluation
-use_mask_for_evaluation: True ## only use centre area for training and evaluation
-
-save_image_iter: 150000
 
 
 # modeling
-stype     : cube ## dummy value
+stype     : cube
 radius    : 0.5
 n_samples : 64
 n_imps    : 64
-mtype     : VcubeMLP
+mtype     : NGPMLP
 
 # test
 zpos      : [0]
@@ -43,9 +34,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-size-no-512
-save_path   : save-vcube-size-no-512
-log_path    : save-vcube-size-no-512
+result_path : save
+save_path   : save
+log_path    : save
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -68,13 +59,6 @@ model:
   n_input_dims: 3
   n_output_dims: 2
 
-  n_samples: $n_samples
-
-  ## alternating training 
-  training_modes: [colour, size]
-  training_mode_max_iters: [20000, 10000]
-  size_network_method: size
-
   encoding:
     otype: HashGrid
     n_levels: 16 ## level of hierachies 
@@ -84,19 +68,12 @@ model:
     per_level_scale: 1.5
   
   ## fast small mlp with tinycudann
-  colour_network:
+  network:
     otype: FullyFusedMLP
     activation: ReLU
     output_activation: None
     n_neurons: 64
     n_hidden_layers: 4
-
-  size_network:
-    otype: FullyFusedMLP
-    activation: Sigmoid
-    output_activation: None
-    n_neurons: 64
-    n_hidden_layers: 3
 
 model_ft : $model
 
@@ -111,11 +88,6 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
-    only_downsampling_in_z: $only_downsampling_in_z
-    direction: $direction
-    use_mask_for_training: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
-    result_path: $result_path
 
   eval :
     file    : $file
@@ -126,10 +98,6 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
-    only_downsampling_in_z: $only_downsampling_in_z
-    direction: $direction
-    use_mask: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
 
   traineval :
     file    : $file
@@ -140,10 +108,6 @@ dataset :
     modality: $modality 
     z_scaler: $z_scaler
     normalise_to_512: $normalise_to_512
-    only_downsampling_in_z: $only_downsampling_in_z
-    direction : $direction
-    use_mask: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
 
   test :
     file      : $file
@@ -155,8 +119,6 @@ dataset :
     cam_scale : $cam_scale
     asteps    : $asteps
     z_scaler  : $z_scaler
-    only_downsampling_in_z: $only_downsampling_in_z
-    direction: $direction
 
 dataloader :
   mode : $mode
@@ -199,5 +161,5 @@ clip_grad :
   max_val  : 0.1
   max_norm : 0.1
 
-vcubemodel:
+ngpmodel:
   dummy: True

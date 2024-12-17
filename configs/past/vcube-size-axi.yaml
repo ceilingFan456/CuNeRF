@@ -2,7 +2,7 @@
 
 # training
 max_iter : 150000 ##200000
-eval_iter: 10000
+eval_iter: 20000
 save_iter: 10000
 log_iter : 100
 bs_train : 1024  # batch size 
@@ -13,18 +13,12 @@ lr       : 0.001 ## 0.002
 lr_final : 0.001 ## 0.00002
 workers  : 4
 
-## experiment parameters
-z_scaler : 1 ## for fixed cubesize, use this value to scale cube in z direction
+z_scaler : 1
+normalise_to_512: False
 always_save: True
-normalise_to_512: False ## normalise to 512x512x512
-alternating_training: True ## alternate training between colour and size, if not relavent, set to absent 
-only_downsampling_in_z: False ## for comparison with original saint, tvsrn
-direction: axial ## verify if anisotropic
-
-use_mask_for_training: True ## only use centre area for training and evaluation
-use_mask_for_evaluation: True ## only use centre area for training and evaluation
-
-save_image_iter: 150000
+alternating_training: True
+only_downsampling_in_z: False
+direction: axial
 
 
 # modeling
@@ -43,9 +37,9 @@ axis      : [0, 1, 1]
 cam_scale : 1.5
 
 # path
-result_path : save-vcube-size-no-512
-save_path   : save-vcube-size-no-512
-log_path    : save-vcube-size-no-512
+result_path : save-axi
+save_path   : save-axi
+log_path    : save-axi
 
 loss : 
   name : MSE_LOSS_REGULARISATION
@@ -113,9 +107,6 @@ dataset :
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
     direction: $direction
-    use_mask_for_training: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
-    result_path: $result_path
 
   eval :
     file    : $file
@@ -128,8 +119,6 @@ dataset :
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
     direction: $direction
-    use_mask: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
 
   traineval :
     file    : $file
@@ -142,8 +131,6 @@ dataset :
     normalise_to_512: $normalise_to_512
     only_downsampling_in_z: $only_downsampling_in_z
     direction : $direction
-    use_mask: $use_mask_for_training
-    use_mask_for_evaluation: $use_mask_for_evaluation
 
   test :
     file      : $file
